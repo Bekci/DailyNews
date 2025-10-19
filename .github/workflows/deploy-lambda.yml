@@ -35,8 +35,14 @@ jobs:
       working-directory: mail_retrieval/.venv/lib/python3.12/site-packages/
       run: |
         cp ../../../../*.py .
-        zip -r daily_news_package.zip .
-        
+        zip -qr daily_news_package.zip .
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: daily-news-package
+        path: daily_news_package.zip
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
