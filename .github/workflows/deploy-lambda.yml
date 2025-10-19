@@ -30,4 +30,20 @@ jobs:
       working-directory: mail_retrieval/
       run: |
         uv sync --frozen  # installs exactly as locked in uv.lock
-        ls -la
+
+    - name: Prepare package
+      working-directory: mail_retrieval/.venv/lib/python3.12/site-packages/
+      run: |
+        cp ../../../../*.py .
+        zip -r daily_news_package.zip .
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Upload repository to S3
+      run: |
+        aws s3 cp daily_news_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip
