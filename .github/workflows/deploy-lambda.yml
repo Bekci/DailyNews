@@ -44,12 +44,12 @@ jobs:
         path: mail_retrieval/.venv/lib/python3.12/site-packages/daily_news_package.zip
 
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v3
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: "eu-central-1"
+        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Upload repository to S3
       run: |
-        aws s3 cp daily_news_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip
+        aws s3 cp daily_news_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip --delete
