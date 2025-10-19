@@ -52,5 +52,6 @@ jobs:
         aws-region: ${{ secrets.AWS_REGION  }}
 
     - name: Upload repository to S3
+      working-directory: mail_retrieval/.venv/lib/python3.12/site-packages/
       run: |
         aws s3 cp daily_news_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip
