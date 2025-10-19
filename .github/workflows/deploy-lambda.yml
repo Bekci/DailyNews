@@ -48,8 +48,8 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: eu-central-1
 
     - name: Upload repository to S3
       run: |
-        aws s3 cp daily_news_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip --delete
+        aws s3 cp daily_news_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip
