@@ -34,7 +34,8 @@ class Exporter:
         self.pc_store = Pinecone(api_key=api_key)
         self.create_index()
         self.index = self.pc_store.Index(name=INDEX_NAME)
-
+        
+        self.print_stats()
 
         self.embedding_model = GoogleGenerativeAIEmbeddings(
             model=EMBED_MODEL_NAME, 
@@ -60,3 +61,6 @@ class Exporter:
     def embed_documents(self, documents:list[Document]):
         uuids = [str(uuid4()) for _ in range(len(documents))]
         self.vector_score.add_documents(documents=documents, ids=uuids, async_req=False)
+
+    def print_stats(self):
+        print(self.index.describe_index_stats())

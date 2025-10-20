@@ -44,15 +44,20 @@ def _construct_documents_from_sections(section_list:list[Section], date_str: str
 
 def process_mail(mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
 
-    date_today: str = datetime.today()
+    date_today  = datetime.today()
+    print("Processing for: {}".format(date_today.strftime("%d-%b-%Y")))
 
     content = Explorer(date_today.strftime("%d-%b-%Y"), mail_key).retrive_email()
     sections = Parser(content).parse_sections()
+    
+    print(f"{len(sections)} sections found")
 
     sections_for_export = _filter_sections_for_export(sections)
     vector_store_documents = _construct_documents_from_sections(sections_for_export, date_today.strftime("%Y-%m-%d"))
 
+    print(f"Will add {len(vector_store_documents)} document")
     exporter = Exporter(pinecone_key, llm_key)
     exporter.embed_documents(vector_store_documents)
+    exporter.print_stats()
 
     return len(vector_store_documents)
