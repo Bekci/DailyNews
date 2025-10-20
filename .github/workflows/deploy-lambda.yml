@@ -58,4 +58,4 @@ jobs:
 
     - name: Update function code
       run: |
-        aws lambda update-function-code --function-name ${{ secrets.FUNCTION_NAME }} --s3-bucket ${{ secrets.S3_BUCKET }} --s3-key /code/daily_news_package.zip
+        aws lambda update-function-code --function-name ${{ secrets.FUNCTION_NAME }} --s3-bucket ${{ secrets.S3_BUCKET }} --s3-key code/daily_news_package.zip
