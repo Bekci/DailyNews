@@ -55,3 +55,7 @@ jobs:
       working-directory: mail_retrieval/.venv/lib/python3.12/site-packages/
       run: |
         aws s3 cp daily_news_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip
+
+    - name: Update function code
+      run: |
+        aws lambda update-function-code --function-name ${{ secrets.FUNCTION_NAME }} --s3-bucket ${{ secrets.S3_BUCKET }} --s3-key s3://${{ secrets.S3_BUCKET }}/code/daily_news_package.zip
