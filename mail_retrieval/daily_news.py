@@ -1,5 +1,7 @@
 import json
 
+import json
+
 from datetime import datetime
 from explorer import Explorer
 from exporter import Exporter
@@ -68,7 +70,37 @@ def _construct_output_file(section_list:list[Section]):
 
 
 def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
+def _construct_output_file(section_list:list[Section]):
+    """
+    Given a Section object, creates a json file to generate as output
+    from the news array of that section
+    """
+    sections_str = []
+    for section in section_list:
+        
+        if len(section.news) == 0:
+            continue
+
+        section_texts = []
+        for news in section.news:
+            section_texts.append(news.get_lines_for_document())
+
+        sections_str.append({
+            "section_title": section.get_title_for_document(),
+            "text": section_texts
+        })
+    return sections_str
+    
+
+
+
+def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
     date_today  = datetime.today()
+    date_as_str = date_today.strftime("%d-%b-%Y")
+    print("Processing for: {}".format(date_as_str))
+
+    content = Explorer(date_as_str, mail_key).retrive_email()
+    
     date_as_str = date_today.strftime("%d-%b-%Y")
     print("Processing for: {}".format(date_as_str))
 
@@ -82,7 +114,14 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
     
     if run_mode == "PROD":
         vector_store_documents = _construct_documents_from_sections(sections_for_export, date_today.strftime("%Y-%m-%d"))
+    
+    if run_mode == "PROD":
+        vector_store_documents = _construct_documents_from_sections(sections_for_export, date_today.strftime("%Y-%m-%d"))
 
+        print(f"Will add {len(vector_store_documents)} document")
+        exporter = Exporter(pinecone_key, llm_key)
+        exporter.embed_documents(vector_store_documents)
+        exporter.print_stats()
         print(f"Will add {len(vector_store_documents)} document")
         exporter = Exporter(pinecone_key, llm_key)
         exporter.embed_documents(vector_store_documents)
@@ -97,6 +136,8 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
             json.dump(output_content, jfile, indent=4, ensure_ascii=False)
 
     return output_content
+    return output_content
 
 if __name__ == '__main__':
+    process_mail("LOCAL_TEST")
     process_mail("LOCAL_TEST")

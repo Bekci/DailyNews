@@ -3,6 +3,7 @@ import boto3
 import json
 
 from datetime import datetime
+from datetime import datetime
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
 from daily_news import process_mail
@@ -52,4 +53,5 @@ def lambda_handler(event, context):
     return {
         'statusCode': 200 if upload_success else 500,
         'body': json.dumps(f'Processing mails finished: {upload_success}')
+
     }
