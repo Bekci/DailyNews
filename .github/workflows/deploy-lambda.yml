@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - ssm-parameters
 
 jobs:
   build-and-upload:
