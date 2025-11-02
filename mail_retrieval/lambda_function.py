@@ -53,5 +53,4 @@ def lambda_handler(event, context):
     return {
         'statusCode': 200 if upload_success else 500,
         'body': json.dumps(f'Processing mails finished: {upload_success}')
-
     }

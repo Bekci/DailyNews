@@ -1,7 +1,5 @@
 import json
 
-import json
-
 from datetime import datetime
 from explorer import Explorer
 from exporter import Exporter
@@ -15,7 +13,7 @@ def _filter_sections_for_export(sections: list[Section]):
     """
     Filters out some sections which is not required to store on the vector store
     """
-    not_allowed_sections = ["BUGÜNKÜ DESTEKÇIMIZ", "HAFTANIN OKUMASI", "AJANDA", "AYRILMADAN ÖNCE"]
+    not_allowed_sections = ["BUGÜNKÜ DESTEKÇIMIZ", "HAFTANIN OKUMASI", "AJANDA", "AYRILMADAN ÖNCE", "PAZAR OKUMASI", "PAZAR ÖNERİLERİ"]
     return [section for section in sections if section.title not in not_allowed_sections]
 
 
@@ -67,9 +65,6 @@ def _construct_output_file(section_list:list[Section]):
     return sections_str
     
 
-
-
-def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
 def _construct_output_file(section_list:list[Section]):
     """
     Given a Section object, creates a json file to generate as output
@@ -92,20 +87,13 @@ def _construct_output_file(section_list:list[Section]):
     return sections_str
     
 
-
-
 def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
     date_today  = datetime.today()
     date_as_str = date_today.strftime("%d-%b-%Y")
     print("Processing for: {}".format(date_as_str))
 
     content = Explorer(date_as_str, mail_key).retrive_email()
-    
-    date_as_str = date_today.strftime("%d-%b-%Y")
-    print("Processing for: {}".format(date_as_str))
-
-    content = Explorer(date_as_str, mail_key).retrive_email()
-    
+        
     sections = Parser(content).parse_sections()
     
     print(f"{len(sections)} sections found")
@@ -114,14 +102,7 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
     
     if run_mode == "PROD":
         vector_store_documents = _construct_documents_from_sections(sections_for_export, date_today.strftime("%Y-%m-%d"))
-    
-    if run_mode == "PROD":
-        vector_store_documents = _construct_documents_from_sections(sections_for_export, date_today.strftime("%Y-%m-%d"))
 
-        print(f"Will add {len(vector_store_documents)} document")
-        exporter = Exporter(pinecone_key, llm_key)
-        exporter.embed_documents(vector_store_documents)
-        exporter.print_stats()
         print(f"Will add {len(vector_store_documents)} document")
         exporter = Exporter(pinecone_key, llm_key)
         exporter.embed_documents(vector_store_documents)
@@ -130,14 +111,11 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
     output_content = _construct_output_file(sections_for_export)
 
     if run_mode == "LOCAL_TEST":
-        
         output_filename = "parsed_news.json"
         with open(output_filename, "w+", encoding="utf-8") as jfile:
             json.dump(output_content, jfile, indent=4, ensure_ascii=False)
 
     return output_content
-    return output_content
 
 if __name__ == '__main__':
-    process_mail("LOCAL_TEST")
     process_mail("LOCAL_TEST")
