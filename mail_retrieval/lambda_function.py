@@ -32,7 +32,7 @@ def get_secret():
 def upload_to_bucket(bucket_name: str, file_key:str, content:list):
     s3_client = boto3.client('s3') 
     try:
-        response = s3_client.put_object(Body=content, Bucket=bucket_name, Key=file_key)
+        response = s3_client.put_object(Body=json.dumps(content, indent=4, ensure_ascii=False).encode('utf-8') , Bucket=bucket_name, Key=file_key)
         print(response)
     except ClientError as e:
         print(f"Cannot upload file: {e}")
