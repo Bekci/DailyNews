@@ -90,7 +90,11 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
 
     output_content = _construct_output_file(sections_for_export)
 
+    if run_mode == "LOCAL_TEST":
+        with open("parsed_news.json", "w", encoding="utf-8") as jfile:
+            json.dump(output_content, jfile, ensure_ascii=False, indent=4)
+
     return output_content
 
 if __name__ == '__main__':
-    process_mail("TEST")
+    process_mail("LOCAL_TEST")
