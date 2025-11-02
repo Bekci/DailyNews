@@ -1,3 +1,5 @@
+import json
+
 from datetime import datetime
 from explorer import Explorer
 from exporter import Exporter
@@ -41,23 +43,57 @@ def _construct_documents_from_sections(section_list:list[Section], date_str: str
 
     return documents
 
+def _construct_output_file(section_list:list[Section]):
+    """
+    Given a Section object, creates a json file to generate as output
+    from the news array of that section
+    """
+    sections_str = []
+    for section in section_list:
+        
+        if len(section.news) == 0:
+            continue
 
-def process_mail(mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
+        section_texts = []
+        for news in section.news:
+            section_texts.append(news.get_lines_for_document())
 
+        sections_str.append({
+            "section_title": section.get_title_for_document(),
+            "text": section_texts
+        })
+    return sections_str
+    
+
+
+
+def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
     date_today  = datetime.today()
-    print("Processing for: {}".format(date_today.strftime("%d-%b-%Y")))
+    date_as_str = date_today.strftime("%d-%b-%Y")
+    print("Processing for: {}".format(date_as_str))
 
-    content = Explorer(date_today.strftime("%d-%b-%Y"), mail_key).retrive_email()
+    content = Explorer(date_as_str, mail_key).retrive_email()
+    
     sections = Parser(content).parse_sections()
     
     print(f"{len(sections)} sections found")
 
     sections_for_export = _filter_sections_for_export(sections)
-    vector_store_documents = _construct_documents_from_sections(sections_for_export, date_today.strftime("%Y-%m-%d"))
+    
+    if run_mode == "PROD":
+        vector_store_documents = _construct_documents_from_sections(sections_for_export, date_today.strftime("%Y-%m-%d"))
 
-    print(f"Will add {len(vector_store_documents)} document")
-    exporter = Exporter(pinecone_key, llm_key)
-    exporter.embed_documents(vector_store_documents)
-    exporter.print_stats()
+        print(f"Will add {len(vector_store_documents)} document")
+        exporter = Exporter(pinecone_key, llm_key)
+        exporter.embed_documents(vector_store_documents)
+        exporter.print_stats()
 
-    return len(vector_store_documents)
+    output_content = _construct_output_file(sections_for_export)
+    output_filename = "parsed_news.json".format()
+    with open(output_filename, "w+", encoding="utf-8") as jfile:
+        json.dump(output_content, jfile, indent=4, ensure_ascii=False)
+
+    return output_filename
+
+if __name__ == '__main__':
+    process_mail("TEST")
