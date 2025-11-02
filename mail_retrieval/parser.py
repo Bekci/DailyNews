@@ -1,9 +1,11 @@
 import re
 
+from text_operations import clean_text
+
 class News:
     def __init__(self, header, details):
-        self.main_text = header
-        self.details = details
+        self.main_text = clean_text(header)
+        self.details = [clean_text(detail) for detail in details]
 
     def __str__(self):
         return "{}\n{}".format(self.main_text, "\n\t\t".join(self.details))
@@ -154,6 +156,9 @@ def _construct_news_lines_from_indices(lines, indices):
     """    
     news = []
     
+    # Make it easier to iterate
+    indices.append((len(lines), []))
+
     for i, current_indices in enumerate(indices[:-1]):
         current_news = [[], []]
         headline_index, subline_indices = current_indices
