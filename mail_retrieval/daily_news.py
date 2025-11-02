@@ -89,11 +89,8 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
         exporter.print_stats()
 
     output_content = _construct_output_file(sections_for_export)
-    output_filename = "parsed_news.json".format()
-    with open(output_filename, "w+", encoding="utf-8") as jfile:
-        json.dump(output_content, jfile, indent=4, ensure_ascii=False)
 
-    return output_filename
+    return output_content
 
 if __name__ == '__main__':
     process_mail("TEST")

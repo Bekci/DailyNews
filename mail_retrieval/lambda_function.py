@@ -29,10 +29,10 @@ def get_secret():
     return secret_res
 
 
-def upload_to_bucket(bucket_name: str, file_key:str, file_name: str):
+def upload_to_bucket(bucket_name: str, file_key:str, content:list):
     s3_client = boto3.client('s3') 
     try:
-        response = s3_client.upload_file(file_name, bucket_name, "{}/{}".format(file_key, file_name))
+        response = s3_client.put_object(Body=content, Bucket=bucket_name, Key=file_key)
         print(response)
     except ClientError as e:
         print(f"Cannot upload file: {e}")
@@ -45,16 +45,13 @@ def lambda_handler(event, context):
     key_result = get_secret()
 
     run_mode = os.environ.get("RUN_MODE", "TEST")
-
-    result_file_name = process_mail(run_mode, key_result["MAIL_PASS"], key_result["PINECONE_API_KEY"], key_result["GOOGLE_API_KEY"])
-
-    if not os.path.exists(result_file_name):
-        raise Exception("The output file is not generated!")
-
     bucket_name = os.environ["BUCKET_NAME"]
+
+    parsed_content = process_mail(run_mode, key_result["MAIL_PASS"], key_result["PINECONE_API_KEY"], key_result["GOOGLE_API_KEY"])
+
     date_today  = datetime.today()
-    key_in_bucket = f"outputs/{date_today.strftime('%Y_%m_%d')}"
-    upload_success =  upload_to_bucket(bucket_name, key_in_bucket, result_file_name)
+    key_in_bucket = f"outputs/{date_today.strftime('%Y_%m_%d')}/parsed_news.json"
+    upload_success =  upload_to_bucket(bucket_name, key_in_bucket, parsed_content)
 
     return {
         'statusCode': 200 if upload_success else 500,
