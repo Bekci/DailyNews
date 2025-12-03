@@ -24,9 +24,9 @@ def download_from_s3(s3_client: S3Client):
     Downloads necessary files from S3.
     The files are input JSON containing the text input, TTS model, and sample WAV file for reference speaker.
     """
-    #s3_client.download_json_file(JSON_PATH)
-    #s3_client.download_model_file(MODEL_PATH)
-    #s3_client.download_sample_wav(SAMPLE_WAV_PATH)
+    s3_client.download_json_file(JSON_PATH)
+    s3_client.download_model_file(MODEL_PATH)
+    s3_client.download_sample_wav(SAMPLE_WAV_PATH)
 
 
 def generate_audio_file_from_sections(sections: list[dict[str, str]]):

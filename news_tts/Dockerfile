@@ -12,12 +12,13 @@ RUN pip3 install --no-cache-dir \
     llvmlite \
     torch torchaudio --extra-index-url https://download.pytorch.org/whl/cu118 \
     tqdm
-
-
+    
 # Copy TTS repository contents:
 WORKDIR /root
 COPY TTS /root/TTS
 COPY . /root
+COPY tts_model_files/config.json /root
+COPY tts_model_files/vocab.json /root
 
 WORKDIR /root/TTS
 RUN make install
