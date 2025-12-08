@@ -47,7 +47,7 @@ def lambda_handler(event, context):
     bucket_name = os.environ["BUCKET_NAME"]
 
     date_today  = datetime.today()
-    key_in_bucket = f"outputs/{date_today.strftime('%Y_%m_%d')}/parsed_news.json"
+    key_in_bucket = f"outputs/{date_today.year}/{date_today.month}/{date_today.day}/parsed_news.json"
     upload_success =  upload_to_bucket(bucket_name, key_in_bucket, parsed_content)
 
     return {
