@@ -1,10 +1,15 @@
+import os
 import boto3
 
 from datetime import datetime
 
+def get_date_str():
+    today = datetime.today()
+    return "{}/{}/{}".format(today.year, today.month, today.day)
+
 class S3Client:
     _BUCKET_NAME = "bekci-daily-news-synthesizer-bucket"
-    _date_str = datetime.now().strftime("%Y_%m_%d")
+    _date_str = get_date_str()
 
     def __init__(self):
         self.s3_client = boto3.client('s3')
@@ -17,12 +22,30 @@ class S3Client:
         print("Downloading JSON from S3:", json_s3_prefix)
         self.s3_client.download_file(S3Client._BUCKET_NAME, json_s3_prefix, local_path)
 
-    def download_model_file(self, local_path: str):
+    def download_model_files(self, local_dir: str):
         """
         Downloads the model file from the specified S3 bucket to the local path.
         """
-        model_s3_prefix = "tts_model/latest/model.pth"
-        print("Downloading model..")
+        model_s3_prefix = "tts_model/latest/"
+        print("Downloading model files..")
+        
+        paginator = self.s3_client.get_paginator("list_objects_v2")
+
+        for page in paginator.paginate(Bucket=S3Client._BUCKET_NAME, Prefix=model_s3_prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                rel_path = os.path.relpath(key, model_s3_prefix)
+                local_path = os.path.join(local_dir, rel_path)
+
+                # If the key ends with "/", it's a folder — skip it
+                if key.endswith("/"):
+                    continue
+
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+                print(f"Downloading {key} → {local_path}")
+                self.s3_client.download_file(S3Client._BUCKET_NAME, key, local_path)
+
         self.s3_client.download_file(S3Client._BUCKET_NAME, model_s3_prefix, local_path)
 
     def download_sample_wav(self, local_path: str):

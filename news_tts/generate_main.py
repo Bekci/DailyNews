@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 JSON_PATH = "input.json"
-MODEL_PATH = "model.pth"
+MODEL_PATH = "tts_model"
 SAMPLE_WAV_PATH = "sample.wav"
 OUTPUT_PATH = "outputs"
 OUTPUT_WAV_PATH = os.path.join(OUTPUT_PATH, "news.wav")
@@ -25,7 +25,7 @@ def download_from_s3(s3_client: S3Client):
     The files are input JSON containing the text input, TTS model, and sample WAV file for reference speaker.
     """
     s3_client.download_json_file(JSON_PATH)
-    s3_client.download_model_file(MODEL_PATH)
+    s3_client.download_model_files(MODEL_PATH)
     s3_client.download_sample_wav(SAMPLE_WAV_PATH)
 
 
