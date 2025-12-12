@@ -48,4 +48,6 @@ jobs:
         mkdir -p ~/.kaggle
         printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' ${{ secrets.KAGGLE_USERNAME }} ${{ secrets.KAGGLE_API_TOKEN }} > ~/.kaggle/kaggle.json
         chmod 600 ~/.kaggle/kaggle.json
-        kaggle datasets version -p daily-news-inference -m "Daily News TTS Inference Package"
+        kaggle datasets version -p burakbekci/dailynewsinferencecode -m "Daily News TTS Inference Package CI Update"
+
+        - name: Upload build artifact
