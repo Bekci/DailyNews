@@ -36,20 +36,19 @@ jobs:
         cp config.json daily-news-inference/
         cd daily-news-inference
         zip -r daily-news-inference.zip .
+        rm *.py
+        rm config.json
         cd ..
         cp dataset-metadata.json daily-news-inference/
+        mkdir -p ~/.kaggle
+        printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' "${{ secrets.KAGGLE_USERNAME }}" "${{ secrets.KAGGLE_API_TOKEN }}" > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+        kaggle datasets version -p daily-news-inference -m "Daily News TTS Inference Package"
+
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: daily-news-package
         path: news_tts/daily-news-inference/
-
-    - name: Upload to Kaggle
-      working-directory: news_tts/
-      run: |
-        mkdir -p ~/.kaggle
-        printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' "${{ secrets.KAGGLE_USERNAME }}" "${{ secrets.KAGGLE_API_TOKEN }}" > ~/.kaggle/kaggle.json
-        chmod 600 ~/.kaggle/kaggle.json
-        kaggle datasets version -p daily-news-inference -m "Daily News TTS Inference Package"
 
