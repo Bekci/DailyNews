@@ -44,6 +44,6 @@ jobs:
       run: |
         # create kaggle.json from environment variables for the kaggle CLI
         mkdir -p ~/.kaggle
-        printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' "$KAGGLE_USERNAME" "$KAGGLE_API_KEY" > ~/.kaggle/kaggle.json
+        printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' ${{ secrets.KAGGLE_USERNAME }} ${{ secrets.KAGGLE_API_KEY }} > ~/.kaggle/kaggle.json
         chmod 600 ~/.kaggle/kaggle.json
         kaggle datasets version -p daily-news-inference -m "Daily News TTS Inference Package"
