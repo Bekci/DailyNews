@@ -33,7 +33,8 @@ jobs:
       run: |
         cp *.py daily-news-inference/
         cd daily-news-inference
-        zip daily-news-inference.zip .
+        ls
+        zip -r daily-news-inference.zip .
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
