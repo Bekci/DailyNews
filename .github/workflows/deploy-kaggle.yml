@@ -12,7 +12,7 @@ jobs:
     environment: daily-news
     env:
       KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-      KAGGLE_API_KEY: ${{ secrets.KAGGLE_API_KEY }}
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
 
     steps:
     - name: Checkout repository
@@ -44,6 +44,6 @@ jobs:
       run: |
         # create kaggle.json from environment variables for the kaggle CLI
         mkdir -p ~/.kaggle
-        printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' ${{ secrets.KAGGLE_USERNAME }} ${{ secrets.KAGGLE_API_KEY }} > ~/.kaggle/kaggle.json
+        printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' ${{ secrets.KAGGLE_USERNAME }} ${{ secrets.KAGGLE_API_TOKEN }} > ~/.kaggle/kaggle.json
         chmod 600 ~/.kaggle/kaggle.json
         kaggle datasets version -p daily-news-inference -m "Daily News TTS Inference Package"
