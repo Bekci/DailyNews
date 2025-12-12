@@ -36,6 +36,7 @@ jobs:
         cp config.json daily-news-inference/
         cd daily-news-inference
         zip -r daily-news-inference.zip .
+        cd ..
         cp dataset-metadata.json daily-news-inference/
 
     - name: Upload build artifact
