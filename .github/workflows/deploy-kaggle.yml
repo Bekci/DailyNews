@@ -48,6 +48,7 @@ jobs:
         path: news_tts/daily-news-inference/
 
     - name: Upload to Kaggle Datasets
+      working-directory: news_tts/
       run: |
         mkdir -p ~/.kaggle
         printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' "${{ secrets.KAGGLE_USERNAME }}" "${{ secrets.KAGGLE_API_TOKEN }}" > ~/.kaggle/kaggle.json
