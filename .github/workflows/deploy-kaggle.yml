@@ -32,17 +32,18 @@ jobs:
       working-directory: news_tts/
       run: |
         cp *.py daily-news-inference/
+        cd daily-news-inference
+        zip daily-news-inference.zip .
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: daily-news-package
-        path: news_tts/daily-news-inference.zip
+        path: news_tts/daily-news-inference/daily-news-inference.zip
 
     - name: Upload to Kaggle
       working-directory: news_tts/
       run: |
-        # create kaggle.json from environment variables for the kaggle CLI
         mkdir -p ~/.kaggle
         printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' ${{ secrets.KAGGLE_USERNAME }} ${{ secrets.KAGGLE_API_TOKEN }} > ~/.kaggle/kaggle.json
         chmod 600 ~/.kaggle/kaggle.json
