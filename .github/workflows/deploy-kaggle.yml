@@ -1,0 +1,42 @@
+name: Build and Upload to Mail Retrieval App
+
+on:
+  push:
+    branches:
+      - main
+      - tts
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    environment: daily-news
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install kaggle CLI
+      run: |
+        python -m pip install --upgrade pip
+        pip install kaggle
+
+    - name: Prepare package
+      working-directory: news_tts/
+      run: |
+        cp *.py daily-news-inference/
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: daily-news-package
+        path: news_tts/daily-news-inference.zip
+
+    - name: Upload to Kaggle
+      working-directory: news_tts/
+      run: |
+        kaggle datasets version -p daily-news-inference -m "Daily News TTS Inference Package"

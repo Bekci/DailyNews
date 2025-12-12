@@ -1,3 +1,4 @@
+import argparse
 import os
 import json
 import logging
@@ -5,36 +6,37 @@ import wave
 import scipy
 import numpy as np
 
-from downloader import S3Client
+from downloader import S3APIClient
 from generator import Generator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 JSON_PATH = "input.json"
-MODEL_PATH = "tts_model"
 SAMPLE_WAV_PATH = "sample.wav"
 OUTPUT_PATH = "outputs"
 OUTPUT_WAV_PATH = os.path.join(OUTPUT_PATH, "news.wav")
 OUTPUT_METADATA_PATH = os.path.join(OUTPUT_PATH, "metadata.json")
 
 
-def download_from_s3(s3_client: S3Client):
+def download_from_s3(s3_client: S3APIClient, url_config_json: str):
     """
     Downloads necessary files from S3.
     The files are input JSON containing the text input, TTS model, and sample WAV file for reference speaker.
     """
-    s3_client.download_json_file(JSON_PATH)
-    s3_client.download_model_files(MODEL_PATH)
-    s3_client.download_sample_wav(SAMPLE_WAV_PATH)
+    with open(url_config_json, "r", encoding="utf-8") as jf:
+        config = json.load(jf)
+
+    s3_client.download_file_with_link(config["input_json_url"], JSON_PATH)
+    s3_client.download_file_with_link(config["sample_wav_url"], SAMPLE_WAV_PATH)
 
 
-def generate_audio_file_from_sections(sections: list[dict[str, str]]):
+def generate_audio_file_from_sections(model_path: str, sections: list[dict[str, str]]):
     """
     Given sections (list of dicts with 'section_title' and 'text'),
     generates audio file and metadata using the TTS model.
     """
-    gen = Generator(tts_model_path=MODEL_PATH, speaker_audio_sample_path=SAMPLE_WAV_PATH)
+    gen = Generator(tts_model_path=model_path, speaker_audio_sample_path=SAMPLE_WAV_PATH)
     gen.generate_audio(sections)
     
     write_wav_int16(OUTPUT_WAV_PATH, gen.get_audio_data(), gen.get_sample_rate())
@@ -68,19 +70,27 @@ def save_wav(path: str, samples: np.ndarray, sample_rate: int) -> None:
     scipy.io.wavfile.write(path, sample_rate, wav_norm)
 
 
-def upload_results_to_s3(s3_client: S3Client):
+def upload_results_to_s3(s3_client: S3APIClient, url_config_json: str):
     """
     Uploads the generated WAV file and metadata JSON to S3.
     """
-    s3_client.upload_wav_file(OUTPUT_WAV_PATH)
-    s3_client.upload_metadata_file(OUTPUT_METADATA_PATH)
+    with open(url_config_json, "r", encoding="utf-8") as jf:
+        config = json.load(jf)
+    
+    s3_client.upload_file_with_link(OUTPUT_WAV_PATH, config["output_wav_url"])
+    s3_client.upload_file_with_link(OUTPUT_METADATA_PATH, config["output_metadata_url"])
 
 
 def main():
-    s3_client = S3Client()
+    p = argparse.ArgumentParser()
+    p.add_argument("--model-path", help="Path of the XTTS model.")
+    p.add_argument("--json-file", help="Path of the input config json file.")
+    args = p.parse_args()
+
+    s3_client = S3APIClient()
     
     logger.info("Downloading necessary files from S3")
-    download_from_s3(s3_client)
+    download_from_s3(s3_client, args.json_file)
     os.makedirs(OUTPUT_PATH, exist_ok=True)
 
     # load json content (UTF-8)
@@ -88,10 +98,10 @@ def main():
         content = json.load(jf)
 
     logger.info("Generating audio...")
-    generate_audio_file_from_sections(content)
+    generate_audio_file_from_sections(args.model_path, content)
 
     logger.info("Uploading results to S3")
-    upload_results_to_s3(s3_client)
+    upload_results_to_s3(s3_client, args.json_file)
 
 
 if __name__ == "__main__":

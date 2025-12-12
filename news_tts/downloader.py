@@ -1,5 +1,6 @@
 import os
 import boto3
+import requests
 
 from datetime import datetime
 
@@ -69,3 +70,28 @@ class S3Client:
         """
         s3_prefix = f"/generated/{S3Client._date_str}/inference_info.json"
         self.s3_client.upload_file(local_path, S3Client._BUCKET_NAME, s3_prefix)
+
+
+class S3APIClient:
+    def __init__(self):
+        self.s3_client = boto3.client("s3")
+    
+    def download_file_with_link(self, url: str, local_path: str):
+        """
+        Downloads a file from a presigned URL to the local path.
+        """
+        print("Downloading file from URL:", url)
+        response = requests.get(url)
+        response.raise_for_status()
+        
+        with open(local_path, "wb") as f:
+            f.write(response.content)
+    
+    def upload_file_with_link(self, local_path: str, url: str):
+        """
+        Uploads a file to a presigned URL.
+        """
+        print("Uploading file to URL:", url)
+        with open(local_path, "rb") as f:
+            response = requests.put(url, data=f)
+            response.raise_for_status()
