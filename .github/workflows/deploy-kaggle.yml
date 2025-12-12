@@ -43,7 +43,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: daily-news-package
-        path: news_tts/daily-news-inference/daily-news-inference.zip
+        path: news_tts/daily-news-inference/
 
     - name: Upload to Kaggle
       working-directory: news_tts/
