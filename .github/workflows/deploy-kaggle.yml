@@ -31,10 +31,12 @@ jobs:
     - name: Prepare package
       working-directory: news_tts/
       run: |
+        mkdir -p daily-news-inference
         cp *.py daily-news-inference/
+        cp config.json daily-news-inference/
         cd daily-news-inference
-        ls
-        zip -r daily-news-inference.zip .
+        zip -r daily-news-inference.zip
+        cp dataset-metadata.json daily-news-inference/
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
