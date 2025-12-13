@@ -126,6 +126,11 @@ def lambda_handler(event, context):
 
     parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
 
+    # Set kaggle environment variables
+    os.environ["KAGGLE_USERNAME"] = get_secret("kaggle-username")
+    os.environ["KAGGLE_KEY"] = get_secret("kaggle-key")
+    os.environ["KAGGLE_API_TOKEN"] = get_secret("kaggle-api-token")
+
     bucket_name = os.environ["BUCKET_NAME"]
 
     date_today  = datetime.today()
