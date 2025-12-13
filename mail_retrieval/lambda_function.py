@@ -30,7 +30,7 @@ os.environ["KAGGLE_API_TOKEN"] = get_secret("kaggle-api-token")
 
 import json
 import shutil
-import subprocess
+import time
 import zipfile
 
 from datetime import datetime
@@ -93,9 +93,10 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
     print(f"URL file replaced in {dataset_download_path}/config.json")
     # Zip the content of the dataset_download_path
     current_working_directory = os.getcwd()
+    date_today = datetime.today().strftime("%Y%m%d")
     
     os.chdir(dataset_download_path)
-    create_zip("daily-news-inference.zip", ".", ".")
+    create_zip(f"dailynewsinference{date_today}.zip", ".", ".")
     os.chdir(current_working_directory)
 
     # Remove all files under than zip
@@ -164,6 +165,7 @@ def lambda_handler(event, context):
 
     if upload_success:
         upload_dataset_kaggle(bucket_name, key_in_bucket)
+        time.sleep(60)  # Wait for Kaggle to process the new dataset
         start_kaggle_notebook()
 
     return {
