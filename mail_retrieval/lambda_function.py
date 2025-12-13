@@ -67,18 +67,20 @@ def generate_s3_upload_link(bucket_name: str, file_key: str):
 
 
 def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
-
+    print("Uploading dataset to Kaggle...")
     kaggle_api = KaggleAPI(dataset_path=TMP_DATASET_PATH, notebook_path=TMP_NOTEBOOK_PATH)
 
     kaggle_api.download_dataset()
+    print("Downloaded the current dataset")
 
     # Replace input_url in config.json with the new S3 presigned URLs
     dataset_download_path = replace_input_url_config(bucket_name, json_file_key)
-
+    print("URL file replaced in config.json")
     # Zip the content of the dataset_download_path
     current_working_directory = os.getcwd()
     os.system(f"cd {dataset_download_path} && zip -r daily-news-inference.zip .")
     os.chdir(current_working_directory)
+
 
     # Remove all files under than zip
     for file_name in os.listdir(dataset_download_path):
@@ -86,9 +88,10 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
             os.remove(os.path.join(dataset_download_path, file_name))
 
     shutil.copyfile(os.path.join("kaggle_configs", "dataset-metadata.json"), os.path.join(dataset_download_path, "kernel-metadata.json"))
+    print("Files are prepared for upload")
 
     kaggle_api.upload_dataset(dataset_download_path)
-
+    print("Uploaded the new dataset to Kaggle")
 
 def replace_input_url_config(bucket_name: str, json_file_key: str):
     fname = os.path.basename(json_file_key)
@@ -123,6 +126,7 @@ def lambda_handler(event, context):
     load_dotenv()
     
     run_mode = os.environ.get("RUN_MODE", "TEST")
+    print(f"Runing mode: {run_mode}")
 
     parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
 
