@@ -31,6 +31,7 @@ os.environ["KAGGLE_API_TOKEN"] = get_secret("kaggle-api-token")
 import json
 import shutil
 import subprocess
+import zipfile
 
 from datetime import datetime
 from datetime import datetime
@@ -89,14 +90,13 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
 
     # Replace input_url in config.json with the new S3 presigned URLs
     dataset_download_path = replace_input_url_config(bucket_name, json_file_key)
-    print("URL file replaced in config.json")
+    print(f"URL file replaced in {dataset_download_path}/config.json")
     # Zip the content of the dataset_download_path
     current_working_directory = os.getcwd()
     
     os.chdir(dataset_download_path)
-    subprocess.run(["zip", "-r", "daily-news-inference.zip", "."])
+    create_zip("daily-news-inference.zip", ".", ".")
     os.chdir(current_working_directory)
-
 
     # Remove all files under than zip
     for file_name in os.listdir(dataset_download_path):
@@ -127,6 +127,16 @@ def replace_input_url_config(bucket_name: str, json_file_key: str):
                 with open(os.path.join(path), "w", encoding="utf-8") as f:
                     json.dump(dataset_config, f, indent=4, ensure_ascii=False)
     return root
+
+def create_zip(zip_name: str, parent_path: str, source_dir):
+    zip_path = os.path.join(parent_path, zip_name)
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(source_dir):
+            for file in files:
+                full_path = os.path.join(root, file)
+                arcname = os.path.relpath(full_path, source_dir)
+                zipf.write(full_path, arcname)
+    return zip_path
 
 def start_kaggle_notebook():
     kaggle_api = KaggleAPI(dataset_path=TMP_DATASET_PATH, notebook_path=TMP_NOTEBOOK_PATH)
