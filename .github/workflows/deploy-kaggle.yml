@@ -1,0 +1,56 @@
+name: Build and Upload to Mail Retrieval App
+
+on:
+  push:
+    branches:
+      - main
+      - tts
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    environment: daily-news
+    env:
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install kaggle CLI
+      run: |
+        python -m pip install --upgrade pip
+        pip install kaggle
+
+    - name: Prepare package
+      working-directory: news_tts/
+      run: |
+        mkdir -p daily-news-inference
+        cp *.py daily-news-inference/
+        cp config.json daily-news-inference/
+        cd daily-news-inference
+        zip -r daily-news-inference.zip .
+        rm *.py
+        rm config.json
+        cd ..
+        cp dataset-metadata.json daily-news-inference/
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: daily-news-package
+        path: news_tts/daily-news-inference/
+
+    - name: Upload to Kaggle Datasets
+      working-directory: news_tts/
+      run: |
+        mkdir -p ~/.kaggle
+        printf '{\n  "username": "%s",\n  "key": "%s"\n}\n' "${{ secrets.KAGGLE_USERNAME }}" "${{ secrets.KAGGLE_API_TOKEN }}" > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+        kaggle datasets version -p daily-news-inference -m "Daily News TTS Inference Package"
