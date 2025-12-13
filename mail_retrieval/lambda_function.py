@@ -134,9 +134,14 @@ def create_zip(zip_name: str, parent_path: str, source_dir):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(source_dir):
             for file in files:
+                
+                if "zip" in file:
+                    continue
+
                 full_path = os.path.join(root, file)
                 arcname = os.path.relpath(full_path, source_dir)
                 zipf.write(full_path, arcname)
+                
     return zip_path
 
 def start_kaggle_notebook():
