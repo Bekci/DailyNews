@@ -1,4 +1,3 @@
-import os 
 from dotenv import load_dotenv
 load_dotenv()
 import kaggle
@@ -19,12 +18,7 @@ class KaggleAPI:
         kaggle.api.dataset_create_version(dataset_path, version_message="Daily update", delete_old_versions=True)
 
     def download_notebook(self):
-        kaggle.api.kernels_pull(NOTEBOOK_SLUG, path=self.notebook_path, metadata=True, quiet=False)
+        kaggle.api.kernels_pull(NOTEBOOK_SLUG, path=self.notebook_path, metadata=False, quiet=False)
 
     def upload_notebook(self):
         kaggle.api.kernels_push(self.notebook_path)
-
-
-if __name__ == "__main__":
-    exporter = KaggleAPI(dataset_path="./kaggle_dataset", notebook_path="./kaggle_notebook")
-    exporter.upload_notebook()
