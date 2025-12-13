@@ -1,0 +1,23 @@
+{
+  "id": "burakbekci/xtts-inference",
+  "id_no": 103906884,
+  "title": "XTTS_Inference",
+  "code_file": "xtts-inference.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "keywords": [],
+  "dataset_sources": [
+    "burakbekci/dailynewsinferencecode"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": [
+    "burakbekci/fimetunedxtts"
+  ],
+  "docker_image": "gcr.io/kaggle-images/python@sha256:bf0b407a5ed73626191ae2259063a0090ae36666c8f00ffdfae3fb543eae750d",
+  "machine_shape": "None"
+}
