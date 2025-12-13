@@ -1,5 +1,32 @@
 import os
 import boto3
+
+def get_secret(parameter_key: str):
+
+    ssm = boto3.client('ssm')
+
+    try:
+        api_key = ssm.get_parameter(
+            Name=parameter_key, 
+            WithDecryption=True
+        )['Parameter']['Value']
+        return api_key
+
+    except ClientError as e:
+        raise e
+    
+    return None
+
+# Set Kaggle config directory to /tmp/ for AWS Lambda environment
+# Add kaggle.json to the /tmp/ directory during runtime
+os.environ["KAGGLE_CONFIG_DIR"] = "/tmp/"
+
+
+# Set kaggle environment variables
+os.environ["KAGGLE_USERNAME"] = get_secret("kaggle-username")
+os.environ["KAGGLE_KEY"] = get_secret("kaggle-key")
+os.environ["KAGGLE_API_TOKEN"] = get_secret("kaggle-api-token")
+
 import json
 import shutil
 
@@ -18,21 +45,6 @@ TMP_DATASET_PATH = "/tmp"
 TMP_NOTEBOOK_PATH = "/tmp/xtts-inference"
 
 
-def get_secret(parameter_key: str):
-
-    ssm = boto3.client('ssm')
-
-    try:
-        api_key = ssm.get_parameter(
-            Name=parameter_key, 
-            WithDecryption=True
-        )['Parameter']['Value']
-        return api_key
-
-    except ClientError as e:
-        raise e
-    
-    return None
     
 
 def upload_to_bucket(bucket_name: str, file_key:str, content:list):
@@ -129,11 +141,6 @@ def lambda_handler(event, context):
     print(f"Runing mode: {run_mode}")
 
     parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
-
-    # Set kaggle environment variables
-    os.environ["KAGGLE_USERNAME"] = get_secret("kaggle-username")
-    os.environ["KAGGLE_KEY"] = get_secret("kaggle-key")
-    os.environ["KAGGLE_API_TOKEN"] = get_secret("kaggle-api-token")
 
     bucket_name = os.environ["BUCKET_NAME"]
 
