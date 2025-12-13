@@ -103,7 +103,7 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
         if not file_name.endswith(".zip"):
             os.remove(os.path.join(dataset_download_path, file_name))
 
-    shutil.copyfile(os.path.join("kaggle_configs", "dataset-metadata.json"), os.path.join(dataset_download_path, "kernel-metadata.json"))
+    shutil.copyfile(os.path.join("kaggle_configs", "dataset-metadata.json"), os.path.join(dataset_download_path, "dataset-metadata.json"))
     print("Files are prepared for upload")
 
     kaggle_api.upload_dataset(dataset_download_path)
