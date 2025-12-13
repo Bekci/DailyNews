@@ -12,7 +12,8 @@ def get_secret(parameter_key: str):
         )['Parameter']['Value']
         return api_key
 
-    except ClientError as e:
+    except Exception as e:
+        print(f"Error getting secret: {parameter_key} from SSM:", e)
         raise e
     
     return None
@@ -29,6 +30,7 @@ os.environ["KAGGLE_API_TOKEN"] = get_secret("kaggle-api-token")
 
 import json
 import shutil
+import subprocess
 
 from datetime import datetime
 from datetime import datetime
@@ -90,7 +92,9 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
     print("URL file replaced in config.json")
     # Zip the content of the dataset_download_path
     current_working_directory = os.getcwd()
-    os.system(f"cd {dataset_download_path} && zip -r daily-news-inference.zip .")
+    
+    os.chdir(dataset_download_path)
+    subprocess.run(["zip", "-r", "daily-news-inference.zip", "."])
     os.chdir(current_working_directory)
 
 
