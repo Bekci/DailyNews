@@ -40,8 +40,8 @@ from botocore.exceptions import ClientError
 from daily_news import process_mail
 from kaggle_exporter import KaggleAPI
 
-DOWNLOAD_EXPIRES_IN = 60 * 120  # 10 minutes
-UPLOAD_EXPIRES_IN = 60 * 180  # 60 minutes
+DOWNLOAD_EXPIRES_IN = 60 * 30  # 30 minutes
+UPLOAD_EXPIRES_IN = 60 * 120  # 120 minutes
 
 SAMPLE_WAV_FILE_KEY = "tts_model/samples/latest/sample.wav"
 TMP_DATASET_PATH = "/tmp"
