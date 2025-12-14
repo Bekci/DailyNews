@@ -86,12 +86,15 @@ class S3APIClient:
         
         with open(local_path, "wb") as f:
             f.write(response.content)
+
+        print("Downloaded file to:", local_path)
     
     def upload_file_with_link(self, local_path: str, url: str):
         """
         Uploads a file to a presigned URL.
         """
         print("Uploading file to URL:", url)
+        
         with open(local_path, "rb") as f:
             response = requests.put(url, data=f)
             response.raise_for_status()

@@ -1,22 +1,5 @@
 import os
 import boto3
-import json
-import shutil
-
-from datetime import datetime
-from datetime import datetime
-from dotenv import load_dotenv
-from botocore.exceptions import ClientError
-from daily_news import process_mail
-from kaggle_exporter import KaggleAPI
-
-DOWNLOAD_EXPIRES_IN = 60 * 10  # 10 minutes
-UPLOAD_EXPIRES_IN = 60 * 60  # 60 minutes
-
-SAMPLE_WAV_FILE_KEY = "tts_model/samples/latest/sample.wav"
-TMP_DATASET_PATH = "/tmp"
-TMP_NOTEBOOK_PATH = "/tmp/xtts-inference"
-
 
 def get_secret(parameter_key: str):
 
@@ -29,10 +12,42 @@ def get_secret(parameter_key: str):
         )['Parameter']['Value']
         return api_key
 
-    except ClientError as e:
+    except Exception as e:
+        print(f"Error getting secret: {parameter_key} from SSM:", e)
         raise e
     
     return None
+
+# Set Kaggle config directory to /tmp/ for AWS Lambda environment
+# Add kaggle.json to the /tmp/ directory during runtime
+os.environ["KAGGLE_CONFIG_DIR"] = "/tmp/"
+
+
+# Set kaggle environment variables
+os.environ["KAGGLE_USERNAME"] = get_secret("kaggle-username")
+os.environ["KAGGLE_KEY"] = get_secret("kaggle-key")
+os.environ["KAGGLE_API_TOKEN"] = get_secret("kaggle-api-token")
+
+import json
+import shutil
+import time
+import zipfile
+
+from datetime import datetime
+from datetime import datetime
+from dotenv import load_dotenv
+from botocore.exceptions import ClientError
+from daily_news import process_mail
+from kaggle_exporter import KaggleAPI
+
+DOWNLOAD_EXPIRES_IN = 60 * 30  # 30 minutes
+UPLOAD_EXPIRES_IN = 60 * 120  # 120 minutes
+
+SAMPLE_WAV_FILE_KEY = "tts_model/samples/latest/sample.wav"
+TMP_DATASET_PATH = "/tmp"
+TMP_NOTEBOOK_PATH = "/tmp/xtts-inference"
+
+
     
 
 def upload_to_bucket(bucket_name: str, file_key:str, content:list):
@@ -67,17 +82,21 @@ def generate_s3_upload_link(bucket_name: str, file_key: str):
 
 
 def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
-
+    print("Uploading dataset to Kaggle...")
     kaggle_api = KaggleAPI(dataset_path=TMP_DATASET_PATH, notebook_path=TMP_NOTEBOOK_PATH)
 
     kaggle_api.download_dataset()
+    print("Downloaded the current dataset")
 
     # Replace input_url in config.json with the new S3 presigned URLs
     dataset_download_path = replace_input_url_config(bucket_name, json_file_key)
-
+    print(f"URL file replaced in {dataset_download_path}/config.json")
     # Zip the content of the dataset_download_path
     current_working_directory = os.getcwd()
-    os.system(f"cd {dataset_download_path} && zip -r daily-news-inference.zip .")
+    date_today = datetime.today().strftime("%Y%m%d")
+    
+    os.chdir(dataset_download_path)
+    create_zip(f"dailynewsinference{date_today}.zip", ".", ".")
     os.chdir(current_working_directory)
 
     # Remove all files under than zip
@@ -85,10 +104,11 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
         if not file_name.endswith(".zip"):
             os.remove(os.path.join(dataset_download_path, file_name))
 
-    shutil.copyfile(os.path.join("kaggle_configs", "dataset-metadata.json"), os.path.join(dataset_download_path, "kernel-metadata.json"))
+    shutil.copyfile(os.path.join("kaggle_configs", "dataset-metadata.json"), os.path.join(dataset_download_path, "dataset-metadata.json"))
+    print("Files are prepared for upload")
 
     kaggle_api.upload_dataset(dataset_download_path)
-
+    print("Uploaded the new dataset to Kaggle")
 
 def replace_input_url_config(bucket_name: str, json_file_key: str):
     fname = os.path.basename(json_file_key)
@@ -109,6 +129,21 @@ def replace_input_url_config(bucket_name: str, json_file_key: str):
                     json.dump(dataset_config, f, indent=4, ensure_ascii=False)
     return root
 
+def create_zip(zip_name: str, parent_path: str, source_dir):
+    zip_path = os.path.join(parent_path, zip_name)
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(source_dir):
+            for file in files:
+                
+                if "zip" in file:
+                    continue
+
+                full_path = os.path.join(root, file)
+                arcname = os.path.relpath(full_path, source_dir)
+                zipf.write(full_path, arcname)
+                
+    return zip_path
+
 def start_kaggle_notebook():
     kaggle_api = KaggleAPI(dataset_path=TMP_DATASET_PATH, notebook_path=TMP_NOTEBOOK_PATH)
 
@@ -123,6 +158,7 @@ def lambda_handler(event, context):
     load_dotenv()
     
     run_mode = os.environ.get("RUN_MODE", "TEST")
+    print(f"Runing mode: {run_mode}")
 
     parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
 
@@ -134,6 +170,7 @@ def lambda_handler(event, context):
 
     if upload_success:
         upload_dataset_kaggle(bucket_name, key_in_bucket)
+        time.sleep(60)  # Wait for Kaggle to process the new dataset
         start_kaggle_notebook()
 
     return {

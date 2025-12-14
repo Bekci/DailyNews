@@ -15,7 +15,7 @@ class KaggleAPI:
         kaggle.api.dataset_download_files(DATASET_SLUG, path=self.dataset_path, quiet=False, unzip=True)
 
     def upload_dataset(self, dataset_path: str):
-        kaggle.api.dataset_create_version(dataset_path, version_message="Daily update", delete_old_versions=True)
+        kaggle.api.dataset_create_version(dataset_path, version_notes="Daily update", delete_old_versions=True)
 
     def download_notebook(self):
         kaggle.api.kernels_pull(NOTEBOOK_SLUG, path=self.notebook_path, metadata=False, quiet=False)

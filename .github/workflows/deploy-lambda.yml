@@ -33,6 +33,9 @@ jobs:
       working-directory: mail_retrieval/.venv/lib/python3.12/site-packages/
       run: |
         cp ../../../../*.py .
+        mkdir kaggle_configs
+        cp ../../../../kaggle_configs/dataset-metadata.json kaggle_configs/dataset-metadata.json
+        cp ../../../../kaggle_configs/kernel-metadata.json kaggle_configs/kernel-metadata.json
         zip -qr daily_news_package.zip .
 
     - name: Upload build artifact
