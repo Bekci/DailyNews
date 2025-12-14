@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - lambda-kaggle-interface
 
 jobs:
   build-and-upload:
