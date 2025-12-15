@@ -11,13 +11,12 @@
   "enable_internet": true,
   "keywords": [],
   "dataset_sources": [
-    "burakbekci/dailynewsinferencecode"
+    "burakbekci/dailynewsinferencecode",
+    "burakbekci/xttsfinetuned"
   ],
   "kernel_sources": [],
   "competition_sources": [],
-  "model_sources": [
-    "burakbekci/fimetunedxtts"
-  ],
+  "model_sources": [],
   "docker_image": "gcr.io/kaggle-images/python@sha256:bf0b407a5ed73626191ae2259063a0090ae36666c8f00ffdfae3fb543eae750d",
   "machine_shape": "None"
 }

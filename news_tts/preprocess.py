@@ -1,4 +1,4 @@
-def _chunk_by_word(sentence_to_chunk: str):
+def _chunk_by_word(sentence_to_chunk: str) -> list[str]:
     """
     Divides the sentence into without dividing any word
     """
@@ -17,7 +17,7 @@ def _chunk_by_word(sentence_to_chunk: str):
             current_length = 0
     return result
 
-def _chunk_sentence(sentence: str):
+def _chunk_sentence(sentence: str) -> list[str]:
     """
     Divides the sentence into chunks of at most 225 characters.
     The main goal is to keep sentence as whole as possible but not
@@ -35,7 +35,25 @@ def _chunk_sentence(sentence: str):
         else:
             chunks.extend(_chunk_by_word(sentence_part))
     
-    return chunks
+    return _combine_short_chunks(chunks)
+
+def _combine_short_chunks(chunks: list[str]) -> list[str]:
+    """
+    Combines the chunks that are shorter than 225 characters
+    with the next chunk to make them longer but still under 225 characters.
+    """
+    result = []
+    current_chunk = ""
+    for chunk in chunks:
+        if len(current_chunk) + len(chunk) + 1 < 226:
+            current_chunk += " " + chunk
+        else:
+            if current_chunk:
+                result.append(current_chunk.strip())
+            current_chunk = chunk
+    if current_chunk:
+        result.append(current_chunk.strip())
+    return result
 
 def chunk_text(text: str) -> list[str]:
     """
@@ -49,6 +67,6 @@ def chunk_text(text: str) -> list[str]:
     for sentence in sentences:
         if len(sentence) < 226 and len(sentence) > 1:
             result.append(sentence.strip())
-        else:
+        elif len(sentence) > 1:
             result.extend(_chunk_sentence(sentence))
     return result
