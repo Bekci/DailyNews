@@ -16,7 +16,7 @@ class Generator:
         if not torch.cuda.is_available():
             print("CUDA is not available. Using CPU for TTS inference, which will be really slow!!")
 
-        self._tts_model = TTS(model_path=tts_model_path, config_path=os.path.join(tts_model_path,"./config.json") , progress_bar=False).to('cuda' if torch.cuda.is_available() else 'cpu')
+        self._tts_model = TTS(model_path=tts_model_path, config_path=os.path.join(tts_model_path, "config.json") , progress_bar=False).to('cuda' if torch.cuda.is_available() else 'cpu')
         self._sample_rate = 22050
 
     
