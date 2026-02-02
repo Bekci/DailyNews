@@ -1,77 +1,67 @@
-import asyncio
-import logging
 import streamlit as st
-
-from client import fetch_available_dates_async
-from client import fetch_conversations_async
-from client import submit_selected_date_async
-from client import fetch_messages_async
-from client import start_chat_async
-from client import send_chat_message_async
-from  datetime import datetime
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from client_wrapper import (
+    fetch_available_dates,
+    fetch_conversations,
+    submit_selected_date,
+    fetch_messages,
+    start_chat,
+    send_chat_message
+)
+from datetime import datetime
 
 DATE_VISUAL_FORMAT = "%d %b %Y"
 DATE_TIME_VISUAL_FORMAT = "%d %b %Y %H:%M"
 
-@st.cache_data(ttl=3600)
-def fetch_available_dates():
-    """Fetch available dates from the API (with caching)"""
-    try:
-        return asyncio.run(fetch_available_dates_async())
-    except Exception as e:
-        logger.error(f"Error fetching available dates: {e}")
-        return []
+def init_state():
+    if "ui" not in st.session_state:
+        st.session_state.ui = {
+            "document_dialog_open": False,
+            "date_dialog_open": False,
+            "error": None
+        }
+
+    if "data" not in st.session_state:
+        st.session_state.data = {
+            "conversations": fetch_conversations(),
+            "available_dates": [],
+            "dialog_selected_date": None,
+            "download_result": None
+        }
+
+    if "chat" not in st.session_state:
+        reset_chat()
+
+def reset_chat():
+    st.session_state.chat = {
+        "current_conversation_id": None,
+        "selected_conversation": None,
+        "messages": [],
+    }        
+    
+
+def close_document_dialog():
+    st.session_state.ui.update({"document_dialog_open", False})
+
+def open_document_dialog():
+    st.session_state.ui.update({"document_dialog_open", True})
+
+def close_date_dialog():
+    st.session_state.ui.update({"date_dialog_open", False})
+
+def open_date_dialog():
+    st.session_state.ui.update({"date_dialog_open", True})
+
+def on_date_selected(selected_date):
+    st.session_state.data["dialog_selected_date"] = selected_date
+    # Send request to API for retrieving the download link
+    st.session_state.data["download_result"] = submit_selected_date(selected_date)
+    close_date_dialog()
+
+def set_error_message(error_message):
+    st.session_state.ui.update({"error": error_message})
 
 
-@st.cache_data(ttl=3600)
-def fetch_conversations():
-    """Fetch available conversations from the API (with caching)"""
-    try:
-        return asyncio.run(fetch_conversations_async())
-    except Exception as e:
-        logger.error(f"Error fetching available conversations: {e}")
-        return []
-
-def submit_selected_date(selected_date):
-    """Send the selected date to the API"""
-    try:
-        return asyncio.run(submit_selected_date_async(selected_date))
-    except Exception as e:
-        logger.error(f"Error fetching available conversations: {e}")
-        return None
-
-
-def fetch_messages(conversation_id: str):
-    """Fetch messages for a conversation"""
-    try:
-        return asyncio.run(fetch_messages_async(conversation_id))
-    except Exception as e:
-        logger.error(f"Error fetching messages: {e}")
-        return []
-
-
-def start_chat(message: str):
-    """Start a new chat conversation"""
-    try:
-        return asyncio.run(start_chat_async(message))
-    except Exception as e:
-        logger.error(f"Error starting chat: {e}")
-        return None
-
-
-def send_chat_message(conversation_id: str, message: str):
-    """Send a message to the chat"""
-    try:
-        return asyncio.run(send_chat_message_async(conversation_id, message))
-    except Exception as e:
-        logger.error(f"Error sending chat message: {e}")
-        return None
-
-
-@st.dialog("Belgeler", width="medium", on_dismiss=lambda: st.session_state.update({"documents_dialog_open": False}))
+@st.dialog("Belgeler", width="medium", on_dismiss=close_document_dialog)
 def show_documents_dialog(documents: list):
     """Display documents in a dialog"""
     st.write("### Kaynak Belgeler")
@@ -82,79 +72,75 @@ def show_documents_dialog(documents: list):
 @st.dialog("Haberleri indirmek için bir gün seç")
 def show_date_picker_dialog():
     # Fetch available dates on first load or when needed
-    if "available_dates" not in st.session_state:
-        with st.spinner("Loading available dates..."):
+    if not st.session_state.data["avaliable_dates"]:
+        with st.spinner("Seçenekler yükleniyor..."):
             available_dates = fetch_available_dates()
             if not available_dates:
                 st.info("İndirilebilir haber bulunamadı.")
                 return
+            st.session_state.data["avaliable_dates"].extend(available_dates)
 
     selected_date = st.selectbox(
         "Hangi tarihin haberlerini indirmek istersiniz?",
         options=available_dates,
-        format_func=lambda d: d.strftime("%Y-%m-%d") if hasattr(d, 'strftime') else str(d),
-        key="date_selector"
+        format_func=lambda d: d.strftime("%Y-%m-%d") if hasattr(d, 'strftime') else str(d)
     )
-
-    st.session_state.dialog_selected_date = selected_date
-
     col1, col2 = st.columns(2)
 
     with col1:
         if st.button("Submit", key="submit_btn"):
-            # Send request to API
-            st.session_state.download_result = submit_selected_date(selected_date)
-            # Close dialog after API response is retrieved
-            st.session_state.dialog_open = False
+            on_date_selected(selected_date)
             st.rerun()
     
     with col2:
         if st.button("Cancel", key="cancel_btn"):
-            st.session_state.dialog_open = False
+            close_date_dialog()
             st.rerun()
 
 
 def render_menu():
     def render_new_conversation_button():
         if st.button("➕ Yeni Konuşma Başlat", key="start_new_conv_btn", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.current_conversation_id = None
-            st.session_state.selected_conversation = None
+            reset_chat()
             st.rerun()
 
     def render_conversations():
         st.subheader("📋 Konuşmalar")
     
         with st.container(height=800, border=True):
-            if st.session_state.conversations_list:
-                for conv in st.session_state.conversations_list:
-                    # Create a clickable conversation item
-                    if st.button(
-                        f"📅 {datetime.fromtimestamp(conv['created_at']).strftime(DATE_VISUAL_FORMAT)}\n{conv['first_question'][:40]}...",
-                        key=f"conv_{conv['conversation_id']}",
-                        use_container_width=True
-                    ):
-                        st.session_state.selected_conversation = conv['conversation_id']
-                        st.rerun()
+            conversations = st.session_state.data["conversations"]
+
+            for conv in conversations:
+                if st.button(
+                    f"📅 {datetime.fromtimestamp(conv['created_at']).strftime(DATE_VISUAL_FORMAT)}\n"
+                    f"{conv['first_question'][:40]}...",
+                    key=f"conv_{conv['conversation_id']}",
+                    use_container_width=True
+                ):
+                    st.session_state.chat["selected_conversation"] = conv['conversation_id']
+                    st.rerun()
             else:
                 st.info("Henüz Ulak'a bir soru sormadın.")
 
     def render_download_options():
         if st.button("📩 Haber bültenleri", key="download_btn", use_container_width=True):
-            st.session_state.dialog_open = True
-        if st.session_state.dialog_open:
+            open_date_dialog()
+
+        if st.session_state.ui["date_dialog_open"]:
             show_date_picker_dialog()
+
+        result = st.session_state.data["download_result"]
+        date = st.session_state.data["dialog_selected_date"]
+
         # Show download button if download_url is available
-        if "download_result" in st.session_state:
-            result = st.session_state.download_result
-            if result and result.get("download_url", None):
-                st.link_button(
-                    f"📥 {st.session_state.dialog_selected_date.strftime(DATE_VISUAL_FORMAT)} tarihli haberleri indir",
-                    result.get("download_url"),
-                    use_container_width=True
-                )
-            else:
-                st.error("İndirme linki oluşturulamadı")
+        if result and result.get("download_url", None) and date:
+            st.link_button(
+                f"📥 {date.strftime(DATE_VISUAL_FORMAT)} tarihli haberleri indir",
+                result["download_url"],
+                use_container_width=True
+            )
+        else:
+            set_error_message("İndirme linki oluşturulamadı")
     
     render_new_conversation_button()
     st.divider()
