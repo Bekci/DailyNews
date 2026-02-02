@@ -71,6 +71,14 @@ def send_chat_message(conversation_id: str, message: str):
         return None
 
 
+@st.dialog("Belgeler", width="medium", on_dismiss=lambda: st.session_state.update({"documents_dialog_open": False}))
+def show_documents_dialog(documents: list):
+    """Display documents in a dialog"""
+    st.write("### Kaynak Belgeler")
+    for idx, doc in enumerate(documents, 1):
+        st.write(f"{idx}. {doc}")
+
+
 @st.dialog("Haberleri indirmek için bir gün seç")
 def show_date_picker_dialog():
     # Fetch available dates on first load or when needed
@@ -117,7 +125,7 @@ def render_menu():
     def render_conversations():
         st.subheader("📋 Konuşmalar")
     
-        with st.container(height=400, border=True):
+        with st.container(height=800, border=True):
             if st.session_state.conversations_list:
                 for conv in st.session_state.conversations_list:
                     # Create a clickable conversation item
@@ -162,6 +170,10 @@ def render_chat():
         st.session_state.messages = []
     if "current_conversation_id" not in st.session_state:
         st.session_state.current_conversation_id = None
+    if "documents_dialog_open" not in st.session_state:
+        st.session_state.documents_dialog_open = False
+    if "selected_documents" not in st.session_state:
+        st.session_state.selected_documents = None
     
     # Load messages if a conversation is selected
     if st.session_state.selected_conversation and st.session_state.selected_conversation != st.session_state.current_conversation_id:
@@ -184,6 +196,16 @@ def render_chat():
                 with st.chat_message("assistant"):
                     st.write(msg["message"])
                     st.caption(f"⏰ {datetime.fromtimestamp(msg['created_at']).strftime(DATE_TIME_VISUAL_FORMAT)}")
+                    
+                    # Display documents button if documents exist
+                    if msg.get("documents"):
+                        if st.button("📄 Belgeleri Göster", key=f"docs_btn_{id(msg)}", use_container_width=False):
+                            st.session_state.selected_documents = msg["documents"]
+                            st.session_state.documents_dialog_open = True
+        
+        # Show documents dialog if triggered
+        if st.session_state.documents_dialog_open and st.session_state.selected_documents:
+            show_documents_dialog(st.session_state.selected_documents)
     
     # Handle message input
     user_input = st.chat_input("Ulak'a soru sor")
@@ -200,15 +222,27 @@ def render_chat():
                     # Add the new conversation to the list
                     st.session_state.conversations_list.insert(0, chat_response)
         
+        st.session_state.messages.append({"role": "user", "message": user_input, "created_at": datetime.now().timestamp()})
+        
+        with st.chat_message("user"):
+            st.write(user_input)
+            
         # Send the message to the chat endpoint
         if st.session_state.current_conversation_id:
             with st.spinner("Ulak düşünüyor..."):
-                response = send_chat_message(st.session_state.current_conversation_id, user_input)
-                if response:
+                agent_response = send_chat_message(st.session_state.current_conversation_id, user_input)
+                if agent_response:
                     # Refresh messages from the conversation
-                    messages = fetch_messages(st.session_state.current_conversation_id)
-                    st.session_state.messages = response.messages
-                    print(response.documents)
+                    assistant_message = {
+                        "role": "assistant",
+                        "message": agent_response["response"],
+                        "created_at": datetime.now().timestamp()
+                    }
+                    # Add documents if available in response
+                    if "documents" in agent_response:
+                        assistant_message["documents"] = agent_response["documents"]
+                    
+                    st.session_state.messages.append(assistant_message)
                     st.session_state.user_input = ""
                     st.rerun()
 
