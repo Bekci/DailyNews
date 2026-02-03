@@ -25,7 +25,8 @@ def init_state():
             "conversations": fetch_conversations(),
             "available_dates": [],
             "dialog_selected_date": None,
-            "download_result": None
+            "download_result": None,
+            "current_documents": []
         }
 
     if "chat" not in st.session_state:
@@ -40,16 +41,16 @@ def reset_chat():
     
 
 def close_document_dialog():
-    st.session_state.ui.update({"document_dialog_open", False})
+    st.session_state.ui["document_dialog_open"] = False
 
 def open_document_dialog():
-    st.session_state.ui.update({"document_dialog_open", True})
+    st.session_state.ui["document_dialog_open"] = True
 
 def close_date_dialog():
-    st.session_state.ui.update({"date_dialog_open", False})
+    st.session_state.ui["date_dialog_open"] = False
 
 def open_date_dialog():
-    st.session_state.ui.update({"date_dialog_open", True})
+    st.session_state.ui["date_dialog_open"] = True
 
 def on_date_selected(selected_date):
     st.session_state.data["dialog_selected_date"] = selected_date
@@ -60,29 +61,32 @@ def on_date_selected(selected_date):
 def set_error_message(error_message):
     st.session_state.ui.update({"error": error_message})
 
+def is_different_conversation_selected(current_chat):
+    return current_chat["selected_conversation"] and current_chat["selected_conversation"] != current_chat["current_conversation_id"]
 
 @st.dialog("Belgeler", width="medium", on_dismiss=close_document_dialog)
-def show_documents_dialog(documents: list):
+def show_documents_dialog():
     """Display documents in a dialog"""
     st.write("### Kaynak Belgeler")
-    for idx, doc in enumerate(documents, 1):
+    for idx, doc in enumerate(st.session_state.data["current_documents"], 1):
         st.write(f"{idx}. {doc}")
 
 
 @st.dialog("Haberleri indirmek için bir gün seç")
 def show_date_picker_dialog():
     # Fetch available dates on first load or when needed
-    if not st.session_state.data["avaliable_dates"]:
+    if not st.session_state.data["available_dates"]:
         with st.spinner("Seçenekler yükleniyor..."):
             available_dates = fetch_available_dates()
             if not available_dates:
                 st.info("İndirilebilir haber bulunamadı.")
                 return
-            st.session_state.data["avaliable_dates"].extend(available_dates)
+        st.session_state.data["available_dates"].extend(available_dates)
 
+    dates = st.session_state.data["available_dates"]
     selected_date = st.selectbox(
         "Hangi tarihin haberlerini indirmek istersiniz?",
-        options=available_dates,
+        options=dates,
         format_func=lambda d: d.strftime("%Y-%m-%d") if hasattr(d, 'strftime') else str(d)
     )
     col1, col2 = st.columns(2)
@@ -119,7 +123,7 @@ def render_menu():
                 ):
                     st.session_state.chat["selected_conversation"] = conv['conversation_id']
                     st.rerun()
-            else:
+            if len(conversations) == 0:
                 st.info("Henüz Ulak'a bir soru sormadın.")
 
     def render_download_options():
@@ -151,101 +155,83 @@ def render_menu():
 def render_chat():
     st.title("📰 Ulak'a sor")
 
-    # Initialize session state for messages
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    if "current_conversation_id" not in st.session_state:
-        st.session_state.current_conversation_id = None
-    if "documents_dialog_open" not in st.session_state:
-        st.session_state.documents_dialog_open = False
-    if "selected_documents" not in st.session_state:
-        st.session_state.selected_documents = None
-    
-    # Load messages if a conversation is selected
-    if st.session_state.selected_conversation and st.session_state.selected_conversation != st.session_state.current_conversation_id:
+    chat = st.session_state.chat
+
+    if is_different_conversation_selected(chat):
         with st.spinner("Konuşma yükleniyor..."):
-            messages = fetch_messages(st.session_state.selected_conversation)
-            st.session_state.messages = messages
-            st.session_state.current_conversation_id = st.session_state.selected_conversation
+            chat["messages"] = fetch_messages(chat["selected_conversation"])
+            chat["current_conversation_id"] = chat["selected_conversation"]
     
     # Display messages
-    message_container = st.container()
-    with message_container:
-        if not st.session_state.messages:
-            st.info("💬 Yeni bir konuşmaya başlamak için Ulak'a soru sor.")
-        for msg in st.session_state.messages:
-            if msg["role"] == "user":
-                with st.chat_message("user"):
-                    st.write(msg["message"])
-                    st.caption(f"⏰ {datetime.fromtimestamp(msg['created_at']).strftime(DATE_TIME_VISUAL_FORMAT)}")
-            elif msg["role"] == "assistant":
-                with st.chat_message("assistant"):
-                    st.write(msg["message"])
-                    st.caption(f"⏰ {datetime.fromtimestamp(msg['created_at']).strftime(DATE_TIME_VISUAL_FORMAT)}")
-                    
-                    # Display documents button if documents exist
-                    if msg.get("documents"):
-                        if st.button("📄 Belgeleri Göster", key=f"docs_btn_{id(msg)}", use_container_width=False):
-                            st.session_state.selected_documents = msg["documents"]
-                            st.session_state.documents_dialog_open = True
-        
-        # Show documents dialog if triggered
-        if st.session_state.documents_dialog_open and st.session_state.selected_documents:
-            show_documents_dialog(st.session_state.selected_documents)
-    
+
+    if not chat["messages"]:
+        st.info("💬 Yeni bir konuşmaya başlamak için Ulak'a soru sor.")
+
+    for msg in chat["messages"]:
+        with st.chat_message(msg["role"]):
+            st.write(msg["message"])
+            st.caption(f"⏰ {datetime.fromtimestamp(msg['created_at']).strftime(DATE_TIME_VISUAL_FORMAT)}")
+            
+            # Display documents button if documents exist
+            if msg.get("documents") and msg["role"] == "assistant":
+                if st.button("📄 Belgeleri Göster", key=f"docs_btn_{id(msg)}", use_container_width=False):
+                    st.session_state.data["current_documents"] = msg["documents"]
+                    open_document_dialog()
+
     # Handle message input
     user_input = st.chat_input("Ulak'a soru sor")
     
-    if user_input:
-        # If no conversation is selected, start a new one
-        if not st.session_state.current_conversation_id:
-            with st.spinner("Konuşma başlatılıyor..."):
-                chat_response = start_chat(user_input)
-                if chat_response:
-                    st.session_state.current_conversation_id = chat_response["conversation_id"]
-                    st.session_state.messages = []
-                    st.session_state.selected_conversation = chat_response["conversation_id"]
-                    # Add the new conversation to the list
-                    st.session_state.conversations_list.insert(0, chat_response)
-        
-        st.session_state.messages.append({"role": "user", "message": user_input, "created_at": datetime.now().timestamp()})
-        
-        with st.chat_message("user"):
-            st.write(user_input)
+    # Display documents dialog if open (before early return)
+    if st.session_state.ui["document_dialog_open"]:
+        show_documents_dialog()
+    
+    if not user_input:
+        return
+
+    # If no conversation is selected, start a new one
+    if not chat["current_conversation_id"]:
+        with st.spinner("Konuşma başlatılıyor..."):
+            chat_response = start_chat(user_input)
             
-        # Send the message to the chat endpoint
-        if st.session_state.current_conversation_id:
-            with st.spinner("Ulak düşünüyor..."):
-                agent_response = send_chat_message(st.session_state.current_conversation_id, user_input)
-                if agent_response:
-                    # Refresh messages from the conversation
-                    assistant_message = {
-                        "role": "assistant",
-                        "message": agent_response["response"],
-                        "created_at": datetime.now().timestamp()
-                    }
-                    # Add documents if available in response
-                    if "documents" in agent_response:
-                        assistant_message["documents"] = agent_response["documents"]
-                    
-                    st.session_state.messages.append(assistant_message)
-                    st.session_state.user_input = ""
-                    st.rerun()
+        if not chat_response:
+            set_error_message("Konuşma başlatılamadı")
+            return
+
+        chat["current_conversation_id"] = chat_response["conversation_id"]
+        chat["selected_conversation"] = chat_response["conversation_id"]
+        chat["messages"] = []
+        
+        # Add the new conversation to the list
+        st.session_state.data["conversations"].insert(0, chat_response)
+    
+    chat["messages"].append({"role": "user", "message": user_input, "created_at": datetime.now().timestamp()})
+    
+    with st.chat_message("user"):
+        st.write(user_input)
+
+        
+    # Send the message to the chat endpoint
+    with st.spinner("Ulak düşünüyor..."):
+        agent_response = send_chat_message(chat["current_conversation_id"], user_input)
+    
+    if agent_response:
+        # Refresh messages from the conversation
+        assistant_message = {
+            "role": "assistant",
+            "message": agent_response["response"],
+            "created_at": datetime.now().timestamp()
+        }
+        # Add documents if available in response
+        if "documents" in agent_response:
+            assistant_message["documents"] = agent_response["documents"]
+        
+        chat["messages"].append(assistant_message)
+        st.rerun()
 
 def main():
     st.set_page_config(page_title="Ulak", layout="wide")
 
-    # Initialize session state
-    if "dialog_open" not in st.session_state:
-        st.session_state.dialog_open = False
-    if "selected_conversation" not in st.session_state:
-        st.session_state.selected_conversation = None
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    if "current_conversation_id" not in st.session_state:
-        st.session_state.current_conversation_id = None
-    if "conversations_list" not in st.session_state:
-        st.session_state.conversations_list = fetch_conversations()
+    init_state()
 
     with st.sidebar:
         render_menu()
