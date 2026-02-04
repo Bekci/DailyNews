@@ -28,10 +28,6 @@ jobs:
         cp ../api/*.py .
         zip -qr daily_news_api_package.zip *
 
-    - name: Sync environment with uv
-      run: |
-        uv sync --frozen  # installs exactly as locked in uv.lock
-
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
