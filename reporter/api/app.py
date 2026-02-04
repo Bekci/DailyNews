@@ -8,10 +8,12 @@ from agent import Ulak
 from datetime import datetime
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from mangum import Mangum
 from fastapi import HTTPException
 from pydantic import BaseModel
 from botocore.exceptions import ClientError
 
+load_dotenv()
 DOWNLOAD_EXPIRES_IN = 60 * 3  # 3 minutes
 app = FastAPI()
 chat_agent = Ulak()
@@ -160,6 +162,5 @@ def download_link(request: DownloadLinkRequest):
         message="Download link generated successfully."
     )
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8081)
-    load_dotenv()
+
+handler = Mangum(app)
