@@ -1,4 +1,4 @@
-name: Build and Upload to Mail Retrieval App
+name: Build and Upload to Kaggle
 
 on:
   push:

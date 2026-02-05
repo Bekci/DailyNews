@@ -2,6 +2,7 @@ import os
 import boto3
 import db
 import uuid
+import logging
 
 from agent import Ulak
 from datetime import datetime
@@ -12,11 +13,16 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from botocore.exceptions import ClientError
 from secret_manager import get_key_from_ssm
-
 load_dotenv()
 DOWNLOAD_EXPIRES_IN = 60 * 3  # 3 minutes
 app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("Initialized app!")
 chat_agent = Ulak()
+logger.info("Initialized chatbot!")
+
 # Initialize API token once at startup
 API_TOKEN = get_key_from_ssm(os.environ.get('API_TOKEN_PARAM_NAME'))
 
@@ -59,6 +65,7 @@ class DownloadLinkResponse(BaseModel):
 
 @app.middleware("http")
 async def auth_middleware(request, call_next):
+    logger.info("Middleware received request!")
     auth = request.headers.get("authorization")
 
     if auth != f"Bearer {API_TOKEN}":
@@ -73,6 +80,7 @@ async def get_conversations():
     Returns the list of conversations for a user.
     Each conversation includes an id, timestamp, and first question.
     """
+    logger.info("/conversations called!")
     conversations = db.get_conversations_by_user("test_user")
     return ConversationHistoryResponse(conversations=conversations)
 
@@ -124,6 +132,7 @@ def get_download_options():
     """
     Returns a list of available dates for which audio files can be downloaded.
     """
+    logger.info("/download-options called!")
     date_today = datetime.today()
     conn = boto3.client('s3')
     existing_file_keys = [key['Key'] for key in conn.list_objects(Bucket=os.environ["BUCKET_NAME"], Prefix=f'outputs/{date_today.year}/')['Contents'] if 'news.wav' in key['Key']]
