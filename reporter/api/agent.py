@@ -12,16 +12,18 @@ from langgraph.checkpoint.memory import InMemorySaver
 from pinecone import Pinecone
 from prompt import SYSTEM_PROMPT
 from typing import Any
+from secret_manager import get_key_from_ssm
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+os.environ["GOOGLE_API_KEY"] = get_key_from_ssm("google-api")
 
 INDEX_NAME = "daily-news"
 EMBED_MODEL_NAME = "gemini-embedding-001"
 CHAT_MODEL_NAME = "gemini-2.5-flash-lite"
 
 
-pc_store = Pinecone(api_key=os.environ.get("PINECONE_API_KEY", ""))
+pc_store = Pinecone(api_key=get_key_from_ssm("pinecone-key"))
 index = pc_store.Index(name=INDEX_NAME)
 embedding_model = GoogleGenerativeAIEmbeddings(model=EMBED_MODEL_NAME)
 vector_store = PineconeVectorStore(embedding=embedding_model, index=index)

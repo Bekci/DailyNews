@@ -2,7 +2,6 @@ import os
 import boto3
 import db
 import uuid
-import uvicorn
 
 from agent import Ulak
 from datetime import datetime
@@ -12,11 +11,14 @@ from mangum import Mangum
 from fastapi import HTTPException
 from pydantic import BaseModel
 from botocore.exceptions import ClientError
+from secret_manager import get_key_from_ssm
 
 load_dotenv()
 DOWNLOAD_EXPIRES_IN = 60 * 3  # 3 minutes
 app = FastAPI()
 chat_agent = Ulak()
+# Initialize API token once at startup
+API_TOKEN = get_key_from_ssm(os.environ.get('API_TOKEN_PARAM_NAME'))
 
 class ChatRequest(BaseModel):
     conversation_id: str
@@ -53,6 +55,17 @@ class DownloadLinkRequest(BaseModel):
 class DownloadLinkResponse(BaseModel):
     download_url: str | None
     message: str
+
+
+@app.middleware("http")
+async def auth_middleware(request, call_next):
+    auth = request.headers.get("authorization")
+
+    if auth != f"Bearer {API_TOKEN}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return await call_next(request)    
+
 
 @app.get("/conversations", response_model=ConversationHistoryResponse)
 async def get_conversations():

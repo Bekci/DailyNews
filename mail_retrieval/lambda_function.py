@@ -22,7 +22,6 @@ def get_secret(parameter_key: str):
 # Add kaggle.json to the /tmp/ directory during runtime
 os.environ["KAGGLE_CONFIG_DIR"] = "/tmp/"
 
-
 # Set kaggle environment variables
 os.environ["KAGGLE_USERNAME"] = get_secret("kaggle-username")
 os.environ["KAGGLE_KEY"] = get_secret("kaggle-key")
@@ -47,8 +46,6 @@ SAMPLE_WAV_FILE_KEY = "tts_model/samples/latest/sample.wav"
 TMP_DATASET_PATH = "/tmp"
 TMP_NOTEBOOK_PATH = "/tmp/xtts-inference"
 
-
-    
 
 def upload_to_bucket(bucket_name: str, file_key:str, content:list):
     s3_client = boto3.client('s3') 
