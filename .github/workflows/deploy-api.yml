@@ -20,19 +20,27 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Prepare Package
-      working-directory: reporter/
+    - name: Install uv
       run: |
-        pip install -t dependencies -r requirements.txt
-        cd dependencies
-        cp ../api/*.py .
-        zip -qr daily_news_api_package.zip *
+        python -m pip install --upgrade pip
+        pip install uv        
+
+    - name: Sync environment with uv
+      working-directory: mail_retrieval/
+      run: |
+        uv sync --frozen  # installs exactly as locked in uv.lock
+
+    - name: Prepare Package
+      working-directory: reporter/api/.venv/lib/python3.12/site-packages/
+      run: |
+        cp ../../../../*.py .
+        zip -qr daily_news_api_package.zip .
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: daily-news-api-package
-        path: reporter/dependencies/daily_news_api_package.zip
+        path: reporter/api/.venv/lib/python3.12/site-packages/daily_news_api_package.zip
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -42,6 +50,10 @@ jobs:
         aws-region: ${{ secrets.AWS_REGION  }}
 
     - name: Upload repository to S3
-      working-directory: reporter/dependencies/
+      working-directory: reporter/api/.venv/lib/python3.12/site-packages/
       run: |
         aws s3 cp daily_news_api_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_api_package.zip
+
+    - name: Update function code
+      run: |
+        aws lambda update-function-code --function-name ${{ secrets.API_FUNCTION_NAME }} --s3-bucket ${{ secrets.S3_BUCKET }} --s3-key code/daily_news_api_package.zip
