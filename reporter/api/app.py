@@ -81,8 +81,12 @@ async def get_conversations():
     Each conversation includes an id, timestamp, and first question.
     """
     logger.info("/conversations called!")
-    conversations = db.get_conversations_by_user("test_user")
-    return ConversationHistoryResponse(conversations=conversations)
+    try:
+        conversations = db.get_conversations_by_user("test_user")
+        return ConversationHistoryResponse(conversations=conversations)
+    except Exception as e:
+        logger.error(f"Error fetching conversations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch conversations")
 
 
 @app.get("/messages/{conversation_id}", response_model=ConversationResponse)
@@ -115,8 +119,7 @@ def chat(request: ChatRequest):
     """    
     db.save_message(request.conversation_id, "user", request.message)
 
-    agent = Ulak()
-    response, documents = agent.query(request.message)
+    response, documents = chat_agent.query(request.message)
 
     db.save_message(request.conversation_id, "assistant", response)
 

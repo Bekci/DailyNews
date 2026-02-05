@@ -22,11 +22,28 @@ INDEX_NAME = "daily-news"
 EMBED_MODEL_NAME = "gemini-embedding-001"
 CHAT_MODEL_NAME = "gemini-2.5-flash-lite"
 
+# Lazy initialization - will be set on first use
+_vector_store = None
+_embedding_model = None
 
-pc_store = Pinecone(api_key=get_key_from_ssm("pinecone-key"))
-index = pc_store.Index(name=INDEX_NAME)
-embedding_model = GoogleGenerativeAIEmbeddings(model=EMBED_MODEL_NAME)
-vector_store = PineconeVectorStore(embedding=embedding_model, index=index)
+def get_vector_store():
+    """Lazily initialize vector store with retry logic."""
+    global _vector_store, _embedding_model
+    
+    if _vector_store is not None:
+        return _vector_store
+    
+    logger.info("Initializing Pinecone vector store...")
+    try:
+        pc_store = Pinecone(api_key=get_key_from_ssm("pinecone-key"))
+        index = pc_store.Index(name=INDEX_NAME)
+        _embedding_model = GoogleGenerativeAIEmbeddings(model=EMBED_MODEL_NAME)
+        _vector_store = PineconeVectorStore(embedding=_embedding_model, index=index)
+        logger.info("Pinecone vector store initialized successfully")
+        return _vector_store
+    except Exception as e:
+        logger.error(f"Failed to initialize Pinecone: {e}")
+        raise
 
 class State(AgentState):
     context: list[Document]
@@ -37,6 +54,7 @@ class RetrieveDocumentsMiddleware(AgentMiddleware[State]):
     def before_model(self, state: AgentState) -> dict[str| Any] | None:
  
         last_query = state["messages"][-1]
+        vector_store = get_vector_store()
         retrieved_docs = vector_store.similarity_search(last_query.content, k=5)
         
         docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
