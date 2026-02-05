@@ -20,8 +20,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 logger.info("Initialized app!")
-chat_agent = Ulak()
-logger.info("Initialized chatbot!")
+_chat_agent = None
+
+def get_chat_agent():
+    """Lazily initialize chat agent on first use."""
+    global _chat_agent
+    if _chat_agent is None:
+        logger.info("Initializing chat agent...")
+        _chat_agent = Ulak()
+        logger.info("Chat agent initialized!")
+    return _chat_agent
+
+logger.info("Chat agent lazy-load configured!")
 
 # Initialize API token once at startup
 API_TOKEN = get_key_from_ssm(os.environ.get('API_TOKEN_PARAM_NAME'))
@@ -119,7 +129,8 @@ def chat(request: ChatRequest):
     """    
     db.save_message(request.conversation_id, "user", request.message)
 
-    response, documents = chat_agent.query(request.message)
+    agent = get_chat_agent()
+    response, documents = agent.query(request.message)
 
     db.save_message(request.conversation_id, "assistant", response)
 
