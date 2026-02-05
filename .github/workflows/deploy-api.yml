@@ -26,7 +26,7 @@ jobs:
         pip install uv        
 
     - name: Sync environment with uv
-      working-directory: mail_retrieval/
+      working-directory: reporter/api/
       run: |
         uv sync --frozen  # installs exactly as locked in uv.lock
 
