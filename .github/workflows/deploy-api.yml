@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - news-bot
 
 jobs:
   build-and-upload:

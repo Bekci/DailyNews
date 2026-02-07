@@ -39,7 +39,7 @@ def init_state():
 
     if "data" not in st.session_state:
         st.session_state.data = {
-            "conversations": fetch_conversations(),
+            "conversations": [],
             "available_dates": [],
             "dialog_selected_date": None,
             "download_result": None,
@@ -61,6 +61,8 @@ def on_authenticated(token):
     st.session_state.authentication["attempts"] = 0
     st.session_state.authentication["locked_until"] = 0
     st.session_state.authentication["token"] = token
+    # Fetch conversations after successful authentication
+    st.session_state.data["conversations"] = fetch_conversations()
 
 def on_authentication_failed():
     st.session_state.authentication["attempts"] += 1
@@ -158,7 +160,7 @@ def show_login_dialog():
         if st.button("Giriş", key="login_submit_btn", use_container_width=True):
             login_response = send_login_request(pwd)
             if login_response:
-                on_authenticated(login_response.get("token"))
+                on_authenticated(login_response.get("access_token"))
                 close_login_dialog()
                 st.rerun()
             else:
@@ -329,26 +331,25 @@ def main():
     
     # If not authenticated, open login dialog automatically
     if not authenticated:
+        st.info("💬 Lütfen giriş yaparak başlayın.")
+        
         error_message = st.session_state.ui.get("error")
         if error_message:
             st.error(error_message)
             st.session_state.ui["error"] = None
         
-        # Open login dialog if not already open
-        if not st.session_state.ui.get("login_dialog_open"):
-            open_login_dialog()
-
-    # Always show the login dialog if it should be open
-    if st.session_state.ui.get("login_dialog_open"):
+        # Show login dialog
         show_login_dialog()
 
-    with st.sidebar:
-        render_menu()
-    
-    if authenticated:
-        render_chat()
     else:
-        st.info("💬 Lütfen giriş yaparak başlayın.")
+        # Always show the login dialog if it should be open
+        if st.session_state.ui.get("login_dialog_open"):
+            show_login_dialog()
+
+        with st.sidebar:
+            render_menu()
+    
+        render_chat()
 
 if __name__ == "__main__":
     main()
