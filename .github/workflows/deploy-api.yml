@@ -1,0 +1,59 @@
+name: Build and Upload API
+
+on:
+  push:
+    branches:
+      - main
+      - news-bot
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    environment: daily-news
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      run: |
+        python -m pip install --upgrade pip
+        pip install uv        
+
+    - name: Sync environment with uv
+      working-directory: reporter/api/
+      run: |
+        uv sync --frozen  # installs exactly as locked in uv.lock
+
+    - name: Prepare Package
+      working-directory: reporter/api/.venv/lib/python3.12/site-packages/
+      run: |
+        cp ../../../../*.py .
+        zip -qr daily_news_api_package.zip .
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: daily-news-api-package
+        path: reporter/api/.venv/lib/python3.12/site-packages/daily_news_api_package.zip
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION  }}
+
+    - name: Upload repository to S3
+      working-directory: reporter/api/.venv/lib/python3.12/site-packages/
+      run: |
+        aws s3 cp daily_news_api_package.zip s3://${{ secrets.S3_BUCKET }}/code/daily_news_api_package.zip
+
+    - name: Update function code
+      run: |
+        aws lambda update-function-code --function-name ${{ secrets.API_FUNCTION_NAME }} --s3-bucket ${{ secrets.S3_BUCKET }} --s3-key code/daily_news_api_package.zip
