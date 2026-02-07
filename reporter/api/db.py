@@ -5,6 +5,32 @@ dynamo_client = boto3.resource('dynamodb', region_name="eu-central-1")
 
 conversations_table = dynamo_client.Table("UlakConversations")
 history_table = dynamo_client.Table("UlakHistory")
+token_table = dynamo_client.Table("UlakAuthentication")
+
+def get_tokens_by_user(user_id):
+    response = token_table.query(
+        KeyConditionExpression='PK = :pk',
+        ExpressionAttributeValues={
+            ':pk': "USER#{}".format(user_id)
+        },
+        ScanIndexForward=False
+    )
+    return response.get("Items", [])
+
+
+def save_token_of_user(user_id, token):
+    created_at = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+    token_table.put_item(
+        Item={
+            'PK': "USER#{}".format(user_id),
+            'SK': "CREATEDAT#{}".format(created_at),
+            'user_id': user_id,
+            'token': token,
+            'created_at': created_at
+        }
+    )
+    return created_at
+
 
 def get_conversations_by_user(user_id):
     response = conversations_table.query(

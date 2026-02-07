@@ -3,6 +3,8 @@ import boto3
 import db
 import uuid
 import logging
+import hmac
+import secrets
 
 from agent import Ulak
 from datetime import datetime
@@ -13,8 +15,10 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from botocore.exceptions import ClientError
 from secret_manager import get_key_from_ssm
+
 load_dotenv()
 DOWNLOAD_EXPIRES_IN = 60 * 3  # 3 minutes
+TOKEN_INVALIDATION_TIME = 60 * 60 # 1 hour
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -72,16 +76,53 @@ class DownloadLinkResponse(BaseModel):
     download_url: str | None
     message: str
 
+class LoginRequest(BaseModel):
+    password: str
 
 @app.middleware("http")
 async def auth_middleware(request, call_next):
-    logger.info("Middleware received request!")
+    # Allow login endpoint without authentication
+    if request.url.path == "/login":
+        return await call_next(request)
+    
     auth = request.headers.get("authorization")
+    try:
+        auth_token = auth.split(" ")[1] if auth else None
+        tokens = db.get_tokens_by_user("test_user")
+    
+        if not tokens:
+            raise HTTPException(status_code=401, detail="No valid tokens found for user")
+    
+        latest_token = tokens[0]
+    
+        if not hmac.compare_digest(auth_token, latest_token['token']):
+            raise HTTPException(status_code=401, detail="Invalid token")
 
-    if auth != f"Bearer {API_TOKEN}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        if int(datetime.now().timestamp()) - latest_token['created_at'] > TOKEN_INVALIDATION_TIME:
+            raise HTTPException(status_code=401, detail="Token expired")
 
+    except (IndexError, KeyError):
+        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+    
     return await call_next(request)    
+
+
+@app.post("/login")
+def login(request: LoginRequest):
+    """
+    Simple login endpoint that checks the provided password against the API token.
+    """
+    
+    if not hmac.compare_digest(request.password, API_TOKEN):
+        logger.info("Login attempt failed!")
+        raise HTTPException(status_code=401, detail="Wrong Password")
+    
+    token = secrets.token_urlsafe(32)
+
+    db.save_token_of_user("test_user", token)
+
+    logger.info("Login attempt success!")
+    return {"access_token": token, "message": "Login successful"}
 
 
 @app.get("/conversations", response_model=ConversationHistoryResponse)
