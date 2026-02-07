@@ -1,3 +1,6 @@
+import os
+import time
+import hmac
 import streamlit as st
 from client_wrapper import (
     fetch_available_dates,
@@ -9,10 +12,24 @@ from client_wrapper import (
 )
 from datetime import datetime
 
+APP_PASSWORD = os.environ["APP_PASSWORD"]
+
+
+MAX_ATTEMPTS = 5
+LOCK_TIME = 300  # seconds (5 min)
 DATE_VISUAL_FORMAT = "%d %b %Y"
 DATE_TIME_VISUAL_FORMAT = "%d %b %Y %H:%M"
 
 def init_state():
+
+    if "authentication" not in st.session_state:
+        st.session_state.authentication = {
+            "attempts": 0,
+            "locked_until": 0,
+            "authenticated": False
+        }
+
+
     if "ui" not in st.session_state:
         st.session_state.ui = {
             "document_dialog_open": False,
@@ -38,7 +55,19 @@ def reset_chat():
         "selected_conversation": None,
         "messages": [],
     }        
+
+def on_authenticated():
+    st.session_state.authentication["authenticated"] = True
+    st.session_state.authentication["attempts"] = 0
+    st.session_state.authentication["locked_until"] = 0
+
+def on_authentication_failed():
+    st.session_state.authentication["attempts"] += 1
     
+    if st.session_state.authentication["attempts"] >= MAX_ATTEMPTS:
+        st.session_state.authentication["locked_until"] = time.time() + LOCK_TIME
+        return True # Locked
+    return False
 
 def close_document_dialog():
     st.session_state.ui["document_dialog_open"] = False
@@ -100,6 +129,29 @@ def show_date_picker_dialog():
         if st.button("Cancel", key="cancel_btn"):
             close_date_dialog()
             st.rerun()
+
+
+def login():
+    now = time.time()
+
+    authentication = st.session_state.authentication
+
+    if now < authentication["locked_until"]:
+        remaining = int(authentication["locked_until"] - now)
+        st.error(f"Too many attempts. Try again in {remaining}s.")
+        st.stop()
+
+    pwd = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        if hmac.compare_digest(pwd, APP_PASSWORD):
+            on_authenticated()
+            st.rerun()
+        else:
+            st.error("Wrong password")
+            if on_authentication_failed():
+                st.error("Too many failed attempts. Temporarily locked.")
+    st.stop()
 
 
 def render_menu():
@@ -233,6 +285,9 @@ def main():
 
     init_state()
 
+    if st.session_state.authentication.get("authenticated", False) == False:
+        login()
+
     with st.sidebar:
         render_menu()
     
@@ -240,3 +295,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
