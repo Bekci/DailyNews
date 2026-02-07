@@ -13,9 +13,6 @@ from client_wrapper import (
 )
 from datetime import datetime
 
-APP_PASSWORD = os.environ["APP_PASSWORD"]
-
-
 MAX_ATTEMPTS = 5
 LOCK_TIME = 300  # seconds (5 min)
 DATE_VISUAL_FORMAT = "%d %b %Y"
@@ -36,6 +33,7 @@ def init_state():
         st.session_state.ui = {
             "document_dialog_open": False,
             "date_dialog_open": False,
+            "login_dialog_open": False,
             "error": None
         }
 
@@ -83,6 +81,12 @@ def close_date_dialog():
 
 def open_date_dialog():
     st.session_state.ui["date_dialog_open"] = True
+
+def close_login_dialog():
+    st.session_state.ui["login_dialog_open"] = False
+
+def open_login_dialog():
+    st.session_state.ui["login_dialog_open"] = True
 
 def on_date_selected(selected_date):
     st.session_state.data["dialog_selected_date"] = selected_date
@@ -134,34 +138,56 @@ def show_date_picker_dialog():
             st.rerun()
 
 
-def login():
+@st.dialog("Giriş Yap", width="medium", on_dismiss=close_login_dialog)
+def show_login_dialog():
+    """Display login dialog"""
     now = time.time()
-
     authentication = st.session_state.authentication
 
     if now < authentication["locked_until"]:
         remaining = int(authentication["locked_until"] - now)
-        st.error(f"Too many attempts. Try again in {remaining}s.")
-        st.stop()
+        st.error(f"Çok fazla deneme. {remaining}s içinde tekrar deneyin.")
+        return
 
-    pwd = st.text_input("Password", type="password")
+    st.write("### Giriş Yapın")
+    pwd = st.text_input("Şifre", type="password", key="login_pwd_input")
 
-    if st.button("Login"):
-        login_response = send_login_request(pwd)
-        if login_response:
-            on_authenticated(login_response.get("token"))
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("Giriş", key="login_submit_btn", use_container_width=True):
+            login_response = send_login_request(pwd)
+            if login_response:
+                on_authenticated(login_response.get("token"))
+                close_login_dialog()
+                st.rerun()
+            else:
+                st.error("Yanlış şifre")
+                if on_authentication_failed():
+                    st.error("Çok fazla başarısız deneme. Geçici olarak kilitlendim.")
+    
+    with col2:
+        if st.button("İptal", key="login_cancel_btn", use_container_width=True):
+            close_login_dialog()
             st.rerun()
-        else:
-            st.error("Wrong password")
-            if on_authentication_failed():
-                st.error("Too many failed attempts. Temporarily locked.")
-    st.stop()
 
 
 def render_menu():
     def render_new_conversation_button():
         if st.button("➕ Yeni Konuşma Başlat", key="start_new_conv_btn", use_container_width=True):
             reset_chat()
+            st.rerun()
+
+    def render_login_button():
+        if st.button("🔐 Giriş Yap", key="login_menu_btn", use_container_width=True):
+            open_login_dialog()
+    
+    def render_logout_button():
+        if st.button("🚪 Çıkış Yap", key="logout_btn", use_container_width=True):
+            st.session_state.authentication["authenticated"] = False
+            st.session_state.authentication["token"] = None
+            st.session_state.authentication["attempts"] = 0
+            st.session_state.authentication["locked_until"] = 0
             st.rerun()
 
     def render_conversations():
@@ -202,11 +228,16 @@ def render_menu():
         else:
             set_error_message("İndirme linki oluşturulamadı")
     
-    render_new_conversation_button()
-    st.divider()
-    render_conversations()
-    st.divider()
-    render_download_options()
+    if st.session_state.authentication.get("authenticated", False):
+        render_logout_button()
+        st.divider()
+        render_new_conversation_button()
+        st.divider()
+        render_conversations()
+        st.divider()
+        render_download_options()
+    else:
+        render_login_button()
 
 def render_chat():
     st.title("📰 Ulak'a sor")
@@ -240,6 +271,10 @@ def render_chat():
     # Display documents dialog if open (before early return)
     if st.session_state.ui["document_dialog_open"]:
         show_documents_dialog()
+    
+    # Display login dialog if open
+    if st.session_state.ui["login_dialog_open"]:
+        show_login_dialog()
     
     if not user_input:
         return
@@ -289,13 +324,31 @@ def main():
 
     init_state()
 
-    if st.session_state.authentication.get("authenticated", False) == False:
-        login()
+    # Check if authentication is still valid
+    authenticated = st.session_state.authentication.get("authenticated", False)
+    
+    # If not authenticated, open login dialog automatically
+    if not authenticated:
+        error_message = st.session_state.ui.get("error")
+        if error_message:
+            st.error(error_message)
+            st.session_state.ui["error"] = None
+        
+        # Open login dialog if not already open
+        if not st.session_state.ui.get("login_dialog_open"):
+            open_login_dialog()
+
+    # Always show the login dialog if it should be open
+    if st.session_state.ui.get("login_dialog_open"):
+        show_login_dialog()
 
     with st.sidebar:
         render_menu()
     
-    render_chat()
+    if authenticated:
+        render_chat()
+    else:
+        st.info("💬 Lütfen giriş yaparak başlayın.")
 
 if __name__ == "__main__":
     main()
