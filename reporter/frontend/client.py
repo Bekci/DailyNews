@@ -1,10 +1,13 @@
+import os
 import aiohttp
 import logging
 
+from dotenv import load_dotenv
 from datetime import datetime
 from typing import Optional
+load_dotenv()
 
-API_BASE_URL = "http://localhost:8081"
+API_BASE_URL = os.environ.get("API_BASE_URL")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
