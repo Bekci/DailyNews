@@ -5,6 +5,7 @@ import streamlit as st
 from client_wrapper import (
     fetch_available_dates,
     fetch_conversations,
+    send_login_request,
     submit_selected_date,
     fetch_messages,
     start_chat,
@@ -26,7 +27,8 @@ def init_state():
         st.session_state.authentication = {
             "attempts": 0,
             "locked_until": 0,
-            "authenticated": False
+            "authenticated": False,
+            "token": None
         }
 
 
@@ -56,10 +58,11 @@ def reset_chat():
         "messages": [],
     }        
 
-def on_authenticated():
+def on_authenticated(token):
     st.session_state.authentication["authenticated"] = True
     st.session_state.authentication["attempts"] = 0
     st.session_state.authentication["locked_until"] = 0
+    st.session_state.authentication["token"] = token
 
 def on_authentication_failed():
     st.session_state.authentication["attempts"] += 1
@@ -144,8 +147,9 @@ def login():
     pwd = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        if hmac.compare_digest(pwd, APP_PASSWORD):
-            on_authenticated()
+        login_response = send_login_request(pwd)
+        if login_response:
+            on_authenticated(login_response.get("token"))
             st.rerun()
         else:
             st.error("Wrong password")

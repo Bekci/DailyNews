@@ -91,3 +91,18 @@ async def send_chat_message_async(conversation_id: str, message: str):
     except aiohttp.ClientError as e:
         logger.error(f"Failed to send chat message: {e}")
         return None
+    
+
+async def send_login_request_async(password: str):
+    """Send a login request to the API asynchronously"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{API_BASE_URL}/login",
+                json={"password": password}
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
+    except aiohttp.ClientError as e:
+        logger.error(f"Failed to send login request: {e}")
+        return None

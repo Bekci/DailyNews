@@ -8,7 +8,8 @@ from client import (
     submit_selected_date_async,
     fetch_messages_async,
     start_chat_async,
-    send_chat_message_async
+    send_chat_message_async,
+    send_login_request_async
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -66,4 +67,12 @@ def send_chat_message(conversation_id: str, message: str):
         return asyncio.run(send_chat_message_async(conversation_id, message))
     except Exception as e:
         logger.error(f"Error sending chat message: {e}")
+        return None
+    
+def send_login_request(password: str):
+    """Send login request to the API"""
+    try:
+        return asyncio.run(send_login_request_async(password))
+    except Exception as e:
+        logger.error(f"Error sending login request: {e}")
         return None
