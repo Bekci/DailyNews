@@ -166,7 +166,8 @@ def clean_up_directories(bucket_name:str):
             year, month, day = parts[1], parts[2], parts[3]
             date_of_file = datetime.strptime('{}-{:02d}-{:02d}'.format(year, month, day), 'YYYY-MM-DD')
             if (date_today - date_of_file) > DAYS_RETENTION:
-                conn.delete_object(Bucket=bucket_name, file_key='myfile.whatever')
+                print(f'Removing {file_key}')
+                #conn.delete_object(Bucket=bucket_name, file_key=file_key)
 
 def lambda_handler(event, context):
     load_dotenv()
@@ -187,7 +188,8 @@ def lambda_handler(event, context):
         time.sleep(60)  # Wait for Kaggle to process the new dataset
         start_kaggle_notebook()
 
-    clean_up_directories()
+    clean_up_directories(bucket_name)
+
     return {
         'statusCode': 200 if upload_success else 500,
         'body': json.dumps(f'Processing mails finished: {upload_success}')
