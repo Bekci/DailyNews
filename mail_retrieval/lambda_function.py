@@ -164,7 +164,7 @@ def clean_up_directories(bucket_name:str):
         parts = file_key.split('/')
         if len(parts) >= 5:
             year, month, day = int(parts[1]), int(parts[2]), int(parts[3])
-            date_of_file = datetime.strptime('{}-{:02d}-{:02d}'.format(year, month, day), 'YYYY-MM-DD')
+            date_of_file = datetime.strptime('{}-{:02d}-{:02d}'.format(year, month, day), '%Y-%m-%d')
             if (date_today - date_of_file) > DAYS_RETENTION:
                 print(f'Removing {file_key}')
                 #conn.delete_object(Bucket=bucket_name, file_key=file_key)
