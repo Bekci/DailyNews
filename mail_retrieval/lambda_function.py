@@ -165,9 +165,9 @@ def clean_up_directories(bucket_name:str):
         if len(parts) >= 5:
             year, month, day = int(parts[1]), int(parts[2]), int(parts[3])
             date_of_file = datetime.strptime('{}-{:02d}-{:02d}'.format(year, month, day), '%Y-%m-%d')
-            if (date_today - date_of_file) > DAYS_RETENTION:
+            if (date_today - date_of_file).days > DAYS_RETENTION:
                 print(f'Removing {file_key}')
-                #conn.delete_object(Bucket=bucket_name, file_key=file_key)
+                conn.delete_object(Bucket=bucket_name, file_key=file_key)
 
 def lambda_handler(event, context):
     load_dotenv()
