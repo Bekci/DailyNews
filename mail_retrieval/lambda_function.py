@@ -41,7 +41,7 @@ from kaggle_exporter import KaggleAPI
 
 DOWNLOAD_EXPIRES_IN = 60 * 30  # 30 minutes
 UPLOAD_EXPIRES_IN = 60 * 120  # 120 minutes
-
+DAYS_RETENTION = 21
 SAMPLE_WAV_FILE_KEY = "tts_model/samples/latest/sample.wav"
 TMP_DATASET_PATH = "/tmp"
 TMP_NOTEBOOK_PATH = "/tmp/xtts-inference"
@@ -151,6 +151,24 @@ def start_kaggle_notebook():
     kaggle_api.upload_notebook()
 
 
+def clean_up_directories(bucket_name:str):
+    """
+    Traverse all subdirectories in the output directory and deletes all the files
+    which are older than the DAYS_RETENTION value 
+    """
+    conn = boto3.client('s3')
+    existing_file_keys = [key['Key'] for key in conn.list_objects(Bucket=os.environ["BUCKET_NAME"], Prefix=f'outputs/')['Contents']]
+    date_today  = datetime.today()
+    
+    for file_key in existing_file_keys:
+        parts = file_key.split('/')
+        if len(parts) >= 5:
+            year, month, day = int(parts[1]), int(parts[2]), int(parts[3])
+            date_of_file = datetime.strptime('{}-{:02d}-{:02d}'.format(year, month, day), '%Y-%m-%d')
+            if (date_today - date_of_file).days > DAYS_RETENTION:
+                print(f'Removing {file_key}')
+                conn.delete_object(Bucket=bucket_name, Key=file_key)
+
 def lambda_handler(event, context):
     load_dotenv()
     
@@ -169,6 +187,8 @@ def lambda_handler(event, context):
         upload_dataset_kaggle(bucket_name, key_in_bucket)
         time.sleep(60)  # Wait for Kaggle to process the new dataset
         start_kaggle_notebook()
+
+    clean_up_directories(bucket_name)
 
     return {
         'statusCode': 200 if upload_success else 500,

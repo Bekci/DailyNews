@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - cleanup-directories
 
 jobs:
   build-and-upload:
