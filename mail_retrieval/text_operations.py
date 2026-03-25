@@ -78,7 +78,7 @@ def _replace_initials_dots(text: str):
     matches = pattern.findall(text)
     
     for match in matches:
-        text.replace(match, match.replace('.', ''))
+        text = text.replace(match, match.replace('.', ''))
     
     return text
 
@@ -89,12 +89,20 @@ def _replace_decimal_commas(text: str):
     """
     return re.sub(r'(?<=\d),(?=\d)', ' virgül ', text)
 
+def _replace_time_dots(text: str):
+    """
+    Replace the dot in time notation (e.g. 14.20, 13.45, 9.30) with a space
+    so it is not stripped by _replace_decimal_dots.
+    Matches valid 24-hour times: hour 0-23, minute 00-59 (always 2 digits).
+    """
+    return re.sub(r'\b([01]?\d|2[0-3])\.([0-5]\d)\b', r'\1 \2', text)
+
 def _replace_decimal_dots(text: str):
     """
-    Remove dots that are between digits (e.g. 45.1 or 0.56)
-    TTS engine can handle such cases without dots.
+    Remove dots that are between digits (e.g. 12.930 thousands separator).
+    Must run after _replace_time_dots so time dots are already gone.
     """
-    return re.sub(r'(?<=\d).(?=\d)', '', text)
+    return re.sub(r'(?<=\d)\.(?=\d)', '', text)
 
 def _remove_abbreviations(text: str):
     """
@@ -113,8 +121,10 @@ def clean_text(text: str):
     """
     cleaned_text = _remove_abbreviations(text)
     cleaned_text = _replace_initials_dots(cleaned_text)
+    cleaned_text = _replace_time_dots(cleaned_text)
     cleaned_text = _replace_decimal_dots(cleaned_text)
     cleaned_text = _replace_decimal_commas(cleaned_text)
+
     clean_text = cleaned_text.replace('"', '').replace('“', '').replace('”', '')
     clean_text = clean_text.replace('’', "'")
     clean_text = _replace_roman_number(clean_text)
@@ -126,4 +136,3 @@ def clean_text(text: str):
     # collapse multiple spaces into one
     clean_text = regex.sub(r'\s{2,}', ' ', clean_text)
     return clean_text.strip()
-
