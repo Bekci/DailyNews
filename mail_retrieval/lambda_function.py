@@ -47,6 +47,16 @@ TMP_DATASET_PATH = "/tmp"
 TMP_NOTEBOOK_PATH = "/tmp/xtts-inference"
 
 
+def s3_file_exists(bucket_name: str, file_key: str) -> bool:
+    s3_client = boto3.client('s3')
+    try:
+        s3_client.head_object(Bucket=bucket_name, Key=file_key)
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            return False
+        raise
+
 def upload_to_bucket(bucket_name: str, file_key:str, content:list):
     s3_client = boto3.client('s3') 
     try:
@@ -171,9 +181,20 @@ def clean_up_directories(bucket_name:str):
 
 def lambda_handler(event, context):
     load_dotenv()
+    bucket_name = os.environ["BUCKET_NAME"]
+
+    date_today  = datetime.today()
+    key_in_bucket = f"outputs/{date_today.year}/{date_today.month}/{date_today.day}/parsed_news.json"
     
     run_mode = os.environ.get("RUN_MODE", "TEST")
     print(f"Runing mode: {run_mode}")
+
+    if s3_file_exists(bucket_name, key_in_bucket):
+        print(f"File already exists in S3 bucket: {bucket_name}/{key_in_bucket}, skipping processing")
+        return {
+            'statusCode': 200,
+            'body': json.dumps('File already exists, skipping processing')
+        }
 
     parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
 
@@ -184,10 +205,6 @@ def lambda_handler(event, context):
             'body': json.dumps('No content to upload')
         }
 
-    bucket_name = os.environ["BUCKET_NAME"]
-
-    date_today  = datetime.today()
-    key_in_bucket = f"outputs/{date_today.year}/{date_today.month}/{date_today.day}/parsed_news.json"
     upload_success =  upload_to_bucket(bucket_name, key_in_bucket, parsed_content)
 
     if upload_success:
