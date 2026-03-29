@@ -93,6 +93,10 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
     print("Processing for: {}".format(date_as_str))
 
     content = Explorer(date_as_str, mail_key).retrive_email()
+
+    if content is None:
+        print("No content to process")
+        return None
         
     sections = Parser(content).parse_sections()
     
