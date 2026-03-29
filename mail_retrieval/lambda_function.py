@@ -177,6 +177,13 @@ def lambda_handler(event, context):
 
     parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
 
+    if parsed_content is None:
+        print("Email not found or no content to process, skipping upload")
+        return {
+            'statusCode': 200,
+            'body': json.dumps('No content to upload')
+        }
+
     bucket_name = os.environ["BUCKET_NAME"]
 
     date_today  = datetime.today()

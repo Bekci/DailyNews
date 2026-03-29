@@ -35,6 +35,11 @@ class Explorer:
         self._mail.login(self.email_address, self._password)
         
         ids = self.retrive_mail_ids()
+
+        if len(ids) == 0:
+            print("No mail found for today")
+            self._mail.logout()
+            return None
         
         if len(ids) > 1:
             print("There are multiple mails")
