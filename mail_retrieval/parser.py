@@ -57,6 +57,96 @@ class Parser:
         for i in range(len(time_info_lines)-1):
             current_time_index = time_info_lines[i]
             next_time_index = time_info_lines[i+1]
+
+            # Before the time info was in a separate line, now it is in the same line with the title.
+            # current_section_title_index = self._get_preceding_nonempty_string(current_time_index)
+            # So we need to get the preceding non-empty line for the title
+            current_title = self._get_cleared_title_and_time_info_line(current_time_index)
+            current_text_start_index = self._get_following_nonempty_string(current_time_index)
+            current_text_end_index = self._get_preceding_nonempty_string(next_time_index)
+
+            sections.append(Section(
+                current_title,
+                self._get_time_info_from_line(current_time_index),
+                self.content_lines[current_text_start_index:current_text_end_index]
+            ))
+
+        # Add the last section
+        last_section_title = self._get_cleared_title_and_time_info_line(time_info_lines[-1])
+        last_section_text_start = self._get_following_nonempty_string(time_info_lines[-1])
+
+        sections.append(Section(
+            last_section_title,
+            self._get_time_info_from_line(time_info_lines[-1]),
+            self.content_lines[last_section_text_start:]
+        ))
+
+        return sections
+        
+    
+    def _get_preceding_nonempty_string(self, index):
+        """
+        Returns the first line that is not empty and before the index 
+        """
+        result = index - 1 
+        while result > -1 and self.content_lines[result] == "":
+            result -= 1
+        return result
+    
+    def _get_following_nonempty_string(self, index):
+        """
+        Returns the first line that is not empty and after the index 
+        """
+        result = index + 1 
+        while result < len(self.content_lines) and self.content_lines[result] == "":
+            result += 1
+        return result
+
+    def _get_cleared_title_and_time_info_line(self, index):
+        """
+        Returns the title line removed from the time info part
+        """
+        time_info_pattern = r'\d{1,2}\sDK(?:\s\d{1,2}\sSN)?|\d{1,2}\sSN'
+        return re.sub(time_info_pattern, " ", self.content_lines[index]).strip()
+
+    def _get_time_info_from_line(self, index):
+        """
+        Returns the time info part found in the indexed content line
+        """
+        time_info_pattern = r'\d{1,2}\sDK(?:\s\d{1,2}\sSN)?|\d{1,2}\sSN'
+        match = re.search(time_info_pattern, self.content_lines[index])
+        return match.group() if match else None
+    
+    def _is_section_time_info_line(self, line):
+        """
+        Check if a line contains string in the form of 
+        d|dd DK d|dd SN
+        or 
+        d|dd DK
+        or 
+        d|dd SN
+        """
+        minutes_seconds_pattern = r"\d{1,2}\sDK\s\d{1,2}\sSN"
+        if bool(re.search(minutes_seconds_pattern, line)):
+            return True
+    
+        either_minute_or_secods_pattern = r'\d{1,2}\s(?:DK|SN)'
+        return bool(re.search(either_minute_or_secods_pattern, line))
+
+    def __init__(self, content: str):
+        self.content_lines = [self._clean_lines(line) for line in content.split("\n")]
+    
+    def _clean_lines(self, line):
+        return line.replace("\xa0", " ").replace("\r", "")
+        
+    def parse_sections(self):
+        sections = []
+
+        time_info_lines = [i for i, line in enumerate(self.content_lines) if self._is_section_time_info_line(line)]
+        
+        for i in range(len(time_info_lines)-1):
+            current_time_index = time_info_lines[i]
+            next_time_index = time_info_lines[i+1]
             
             current_section_title_index = self._get_preceding_nonempty_string(current_time_index)
             current_text_start_index = self._get_following_nonempty_string(current_time_index)
@@ -108,14 +198,14 @@ class Parser:
         d|dd DK
         or 
         d|dd SN
+        Substring match is enough
         """
-        minutes_seconds_pattern = r'^(?:\d{1,2}\sDK\s\d{1,2}\sSN)$'
-        if bool(re.match(minutes_seconds_pattern, line.strip())):
+        minutes_seconds_pattern = r"\d{1,2}\sDK\s\d{1,2}\sSN"
+        if bool(re.search(minutes_seconds_pattern, line)):
             return True
-        
-        either_minute_or_secods_pattern = r'^(?:\d{1,2}\s(?:DK|SN))$'
-        return bool(re.match(either_minute_or_secods_pattern, line.strip()))
-
+    
+        either_minute_or_secods_pattern = r'\d{1,2}\s(?:DK|SN)'
+        return bool(re.search(either_minute_or_secods_pattern, line))
 
 
 def _parse_section_indices(lines):
