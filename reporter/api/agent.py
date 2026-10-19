@@ -84,14 +84,14 @@ class Ulak:
             )
         self.config = RunnableConfig = {"configurable": {"thread_id": "1"}}
 
-    def query(self, user_query: str) -> str:
+    def query(self, user_query: str) -> tuple[str, list[str] | None]:
 
         res = self.agent.invoke(
             {"messages": user_query},
             self.config
         )
 
-        ai_response = res['messages'][-1].content
+        ai_response = res['messages'][-1].text
         
         if 'context' not in res:
             return ai_response, None
