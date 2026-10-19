@@ -18,7 +18,7 @@ load_dotenv()
 
 INDEX_NAME = "daily-news"
 EMBED_MODEL_NAME = "gemini-embedding-001"
-CHAT_MODEL_NAME = "gemini-2.5-flash-lite"
+CHAT_MODEL_NAME = "gemini-3.5-flash-lite"
 
 pc_store = Pinecone(api_key=os.environ.get("PINECONE_API_KEY", ""))
 index = pc_store.Index(name=INDEX_NAME)
