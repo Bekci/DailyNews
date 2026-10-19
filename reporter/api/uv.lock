@@ -165,7 +165,7 @@ dependencies = [
     { name = "langchain-pinecone" },
     { name = "langgraph" },
     { name = "mangum" },
-    { name = "pinecone-client" },
+    { name = "pinecone" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
@@ -181,7 +181,7 @@ requires-dist = [
     { name = "langchain-pinecone", specifier = ">=0.2.13" },
     { name = "langgraph", specifier = ">=1.0.7" },
     { name = "mangum", specifier = ">=0.21.0" },
-    { name = "pinecone-client", specifier = ">=6.0.0" },
+    { name = "pinecone", specifier = ">=7.3.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "uvicorn", specifier = ">=0.40.0" },
@@ -1197,22 +1197,6 @@ wheels = [
 asyncio = [
     { name = "aiohttp" },
     { name = "aiohttp-retry" },
-]
-
-[[package]]
-name = "pinecone-client"
-version = "6.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "pinecone-plugin-interface" },
-    { name = "python-dateutil" },
-    { name = "typing-extensions" },
-    { name = "urllib3", marker = "python_full_version < '4'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/ab/3ab3b81e8ad82fbfcaa4f446c7f962b18968d61543c8c9e2c38bd777c056/pinecone_client-6.0.0.tar.gz", hash = "sha256:f224fc999205e4858c4737c40922bdf42d178b361c8859bc486ec00d45b359a9", size = 7004, upload-time = "2025-02-21T19:47:38.899Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/e4/7780cd631dc6dad0172a245e958b41b28a70779594c0790fa08b952aa97f/pinecone_client-6.0.0-py3-none-any.whl", hash = "sha256:d81a9e73cae441e4ab6dfc9c1d8b51c9895dae2488cda64f3e21b9dfc10c8d94", size = 6654, upload-time = "2025-02-21T19:47:37.23Z" },
 ]
 
 [[package]]
