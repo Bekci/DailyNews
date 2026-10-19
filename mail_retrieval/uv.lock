@@ -991,6 +991,7 @@ dependencies = [
     { name = "langchain-core" },
     { name = "langchain-google-genai" },
     { name = "langchain-pinecone" },
+    { name = "pinecone" },
     { name = "python-dotenv" },
 ]
 
@@ -1003,6 +1004,7 @@ requires-dist = [
     { name = "langchain-core", specifier = ">=0.3.79" },
     { name = "langchain-google-genai", specifier = ">=2.1.12" },
     { name = "langchain-pinecone", specifier = ">=0.2.12" },
+    { name = "pinecone", specifier = ">=7.3.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
 ]
 

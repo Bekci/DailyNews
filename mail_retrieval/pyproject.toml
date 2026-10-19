@@ -12,5 +12,6 @@ dependencies = [
     "langchain-core>=0.3.79",
     "langchain-google-genai>=2.1.12",
     "langchain-pinecone>=0.2.12",
+    "pinecone>=7.3.0",
     "python-dotenv>=1.1.1",
 ]
