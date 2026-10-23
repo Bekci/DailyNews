@@ -1,4 +1,5 @@
 import os
+import random
 from abc import ABC, abstractmethod
 from typing import TypedDict
 
@@ -86,10 +87,72 @@ class TurkishGenerator(Generator):
 
 
 class GermanGenerator(Generator):
-    MODEL_NAME = "tts_models/de/thorsten/tacotron2-DDC"
+    SPEAKERS = [
+        "Claribel Dervla",
+        "Daisy Studious",
+        "Gracie Wise",
+        "Tammie Ema",
+        "Alison Dietlinde",
+        "Ana Florence",
+        "Annmarie Nele",
+        "Asya Anara",
+        "Brenda Stern",
+        "Gitta Nikolina",
+        "Henriette Usha",
+        "Sofia Hellen",
+        "Tammy Grit",
+        "Tanja Adelina",
+        "Vjollca Johnnie",
+        "Andrew Chipper",
+        "Badr Odhiambo",
+        "Dionisio Schuyler",
+        "Royston Min",
+        "Viktor Eka",
+        "Abrahan Mack",
+        "Adde Michal",
+        "Baldur Sanjin",
+        "Craig Gutsy",
+        "Damien Black",
+        "Gilberto Mathias",
+        "Ilkin Urbano",
+        "Kazuhiko Atallah",
+        "Ludvig Milivoj",
+        "Suad Qasim",
+        "Torcull Diarmuid",
+        "Viktor Menelaos",
+        "Zacharie Aimilios",
+        "Nova Hogarth",
+        "Maja Ruoho",
+        "Uta Obando",
+        "Lidiya Szekeres",
+        "Chandra MacFarland",
+        "Szofi Granger",
+        "Camilla Holmström",
+        "Lilya Stainthorpe",
+        "Zofija Kendrick",
+        "Narelle Moon",
+        "Barbora MacLean",
+        "Alexandra Hisakawa",
+        "Alma María",
+        "Rosemary Okafor",
+        "Ige Behringer",
+        "Filip Traverse",
+        "Damjan Chapman",
+        "Wulf Carlevaro",
+        "Aaron Dreschner",
+        "Kumar Dahl",
+        "Eugenio Mataracı",
+        "Ferran Simen",
+        "Xavier Hayasaka",
+        "Luis Moray",
+        "Marcos Rudaski",
+    ]
+    MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 
     def __init__(self) -> None:
         super().__init__()
+        self._speaker = random.choice(self.SPEAKERS)
+        print(f"Selected speaker for German TTS: {self._speaker}")
         self._tts_model = TTS(
             model_name=self.MODEL_NAME,
             progress_bar=False,
@@ -97,4 +160,8 @@ class GermanGenerator(Generator):
         self._sample_rate = self._tts_model.synthesizer.output_sample_rate
 
     def _infer_text(self, text: str) -> list[float]:
-        return self._tts_model.tts(text=text)
+        return self._tts_model.tts(
+            text=text,
+            speaker=self._speaker,
+            language="de",
+        )
