@@ -1,7 +1,8 @@
 {
+	"original_json_url": "",
 	"input_json_url": "",
 	"sample_wav_url": "",
-	"output_wav_url": "",
+	"german_output_wav_url": "",
+	"turkish_output_wav_url": "",
 	"output_metadata_url": ""
 }
-

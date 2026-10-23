@@ -36,6 +36,7 @@ from datetime import datetime
 from datetime import datetime
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
+from content_refiner import refine_parsed_content
 from daily_news import process_mail
 from kaggle_exporter import KaggleAPI
 
@@ -88,7 +89,7 @@ def generate_s3_upload_link(bucket_name: str, file_key: str):
     return upload_url
 
 
-def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
+def upload_dataset_kaggle(bucket_name: str, json_file_key: str, refined_json_file_key: str):
     print("Uploading dataset to Kaggle...")
     kaggle_api = KaggleAPI(dataset_path=TMP_DATASET_PATH, notebook_path=TMP_NOTEBOOK_PATH)
 
@@ -96,7 +97,7 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
     print("Downloaded the current dataset")
 
     # Replace input_url in config.json with the new S3 presigned URLs
-    dataset_download_path = replace_input_url_config(bucket_name, json_file_key)
+    dataset_download_path = replace_input_url_config(bucket_name, json_file_key, refined_json_file_key)
     print(f"URL file replaced in {dataset_download_path}/config.json")
     # Zip the content of the dataset_download_path
     current_working_directory = os.getcwd()
@@ -111,19 +112,25 @@ def upload_dataset_kaggle(bucket_name: str, json_file_key: str):
         if not file_name.endswith(".zip"):
             os.remove(os.path.join(dataset_download_path, file_name))
 
-    shutil.copyfile(os.path.join("kaggle_configs", "dataset-metadata.json"), os.path.join(dataset_download_path, "dataset-metadata.json"))
+    shutil.copyfile(
+        os.path.join("kaggle_configs", "dataset-metadata.json"), 
+        os.path.join(dataset_download_path, "dataset-metadata.json")
+    )
+
     print("Files are prepared for upload")
 
     kaggle_api.upload_dataset(dataset_download_path)
     print("Uploaded the new dataset to Kaggle")
 
-def replace_input_url_config(bucket_name: str, json_file_key: str):
+def replace_input_url_config(bucket_name: str, json_file_key: str, refined_json_file_key: str):
     fname = os.path.basename(json_file_key)
     
     dataset_config = {
-        "input_json_url": generate_s3_download_link(bucket_name, json_file_key),
+        "original_json_url": generate_s3_download_link(bucket_name, json_file_key),
+        "input_json_url": generate_s3_download_link(bucket_name, refined_json_file_key),
         "sample_wav_url": generate_s3_download_link(bucket_name, SAMPLE_WAV_FILE_KEY),
-        "output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "news.wav")),
+        "german_output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "german_news.wav")),
+        "turkish_output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "turkish_news.wav")),
         "output_metadata_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "output_metadata.json")),
     }
     
@@ -185,7 +192,8 @@ def lambda_handler(event, context):
 
     date_today  = datetime.today()
     key_in_bucket = f"outputs/{date_today.year}/{date_today.month}/{date_today.day}/parsed_news.json"
-    
+    refined_key_in_bucket = f"outputs/{date_today.year}/{date_today.month}/{date_today.day}/refined_parsed_news.json"
+
     run_mode = os.environ.get("RUN_MODE", "TEST")
     print(f"Runing mode: {run_mode}")
 
@@ -196,7 +204,13 @@ def lambda_handler(event, context):
             'body': json.dumps('File already exists, skipping processing')
         }
 
-    parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
+    google_api_key = get_secret("google-api")
+    parsed_content = process_mail(
+        run_mode,
+        get_secret("mail-key"),
+        get_secret("pinecone-key"),
+        google_api_key,
+    )
 
     if parsed_content is None:
         print("Email not found or no content to process, skipping upload")
@@ -205,10 +219,13 @@ def lambda_handler(event, context):
             'body': json.dumps('No content to upload')
         }
 
+    refined_parsed_content = refine_parsed_content(parsed_content, google_api_key)
+    print("Uploading results to the S3 bucket...")
     upload_success =  upload_to_bucket(bucket_name, key_in_bucket, parsed_content)
+    upload_success =  upload_to_bucket(bucket_name, refined_key_in_bucket, refined_parsed_content)
 
     if upload_success:
-        upload_dataset_kaggle(bucket_name, key_in_bucket)
+        upload_dataset_kaggle(bucket_name, key_in_bucket, refined_key_in_bucket)
         time.sleep(60)  # Wait for Kaggle to process the new dataset
         start_kaggle_notebook()
 

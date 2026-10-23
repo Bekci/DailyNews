@@ -7,7 +7,7 @@ import scipy
 import numpy as np
 
 from downloader import S3APIClient
-from generator import Generator
+from generator import GermanGenerator, TurkishGenerator, TTSSection
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -19,25 +19,63 @@ OUTPUT_WAV_PATH = os.path.join(OUTPUT_PATH, "news.wav")
 OUTPUT_METADATA_PATH = os.path.join(OUTPUT_PATH, "metadata.json")
 
 
-def download_from_s3(s3_client: S3APIClient, url_config_json: str):
+def download_from_s3(
+    s3_client: S3APIClient, url_config_json: str, language: str
+):
     """
-    Downloads necessary files from S3.
-    The files are input JSON containing the text input, TTS model, and sample WAV file for reference speaker.
+    Downloads the input JSON and, for Turkish synthesis, its speaker sample.
     """
     with open(url_config_json, "r", encoding="utf-8") as jf:
         config = json.load(jf)
 
     s3_client.download_file_with_link(config["input_json_url"], JSON_PATH)
-    s3_client.download_file_with_link(config["sample_wav_url"], SAMPLE_WAV_PATH)
+    if language == "turkish":
+        s3_client.download_file_with_link(config["sample_wav_url"], SAMPLE_WAV_PATH)
 
 
-def generate_audio_file_from_sections(model_path: str, sections: list[dict[str, str]]):
+def _prepare_sections(sections: object, language: str) -> list[TTSSection]:
+    title_key = "section_title_de" if language == "german" else "section_title_tr"
+    text_key = language
+    tts_sections: list[TTSSection] = []
+
+    for section in sections:
+        section_title = section[title_key]
+        news_items = section["news"]
+        texts: list[str] = []
+        for news_item in news_items:
+            text = (
+                news_item.get(text_key) if isinstance(news_item, dict) else None
+            )
+            if text.strip():
+                texts.append(text)
+
+        if texts:
+            tts_sections.append({"section_title": section_title, "text": texts})
+    
+    return tts_sections
+
+
+def generate_audio_file_from_sections(
+    sections: object,
+    language: str,
+    model_path: str | None = None,
+):
     """
-    Given sections (list of dicts with 'section_title' and 'text'),
-    generates audio file and metadata using the TTS model.
+    Generates audio and metadata in the selected language.
     """
-    gen = Generator(tts_model_path=model_path, speaker_audio_sample_path=SAMPLE_WAV_PATH)
-    gen.generate_audio(sections)
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+    if language == "german":
+        gen = GermanGenerator()
+    elif language == "turkish":
+        if not model_path:
+            raise ValueError("A model path is required for Turkish synthesis.")
+        gen = TurkishGenerator(
+            tts_model_path=model_path,
+            speaker_audio_sample_path=SAMPLE_WAV_PATH,
+        )
+    else:
+        raise ValueError("Language must be 'german' or 'turkish'.")
+    gen.generate_audio(_prepare_sections(sections, language))
     
     write_wav_int16(OUTPUT_WAV_PATH, gen.get_audio_data(), gen.get_sample_rate())
     
@@ -70,27 +108,44 @@ def save_wav(path: str, samples: np.ndarray, sample_rate: int) -> None:
     scipy.io.wavfile.write(path, sample_rate, wav_norm)
 
 
-def upload_results_to_s3(s3_client: S3APIClient, url_config_json: str):
+def upload_results_to_s3(s3_client: S3APIClient, url_config_json: str, language: str):
     """
     Uploads the generated WAV file and metadata JSON to S3.
     """
     with open(url_config_json, "r", encoding="utf-8") as jf:
         config = json.load(jf)
     
-    s3_client.upload_file_with_link(OUTPUT_WAV_PATH, config["output_wav_url"])
-    s3_client.upload_file_with_link(OUTPUT_METADATA_PATH, config["output_metadata_url"])
+    s3_client.upload_file_with_link(OUTPUT_WAV_PATH, config[f"{language}_output_wav_url"])
+    # Metadata only required for Turkish, as it is the finetuned model
+    if language == "turkish":
+        s3_client.upload_file_with_link(OUTPUT_METADATA_PATH, config[f"output_metadata_url"])
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--model-path", help="Path of the XTTS model.")
-    p.add_argument("--json-file", help="Path of the input config json file.")
+    p.add_argument(
+        "--json-file",
+        required=True,
+        help="Path of the input config json file.",
+    )
+    p.add_argument(
+        "--language",
+        choices=("german", "turkish"),
+        default="german",
+        help="Language to synthesize (default: german).",
+    )
+    p.add_argument(
+        "--model-path",
+        help="Path to the local XTTS model; required for Turkish.",
+    )
     args = p.parse_args()
+    if args.language == "turkish" and not args.model_path:
+        p.error("--model-path is required when --language is turkish.")
 
     s3_client = S3APIClient()
     
     logger.info("Downloading necessary files from S3")
-    download_from_s3(s3_client, args.json_file)
+    download_from_s3(s3_client, args.json_file, args.language)
     os.makedirs(OUTPUT_PATH, exist_ok=True)
 
     # load json content (UTF-8)
@@ -98,10 +153,10 @@ def main():
         content = json.load(jf)
 
     logger.info("Generating audio...")
-    generate_audio_file_from_sections(args.model_path, content)
+    generate_audio_file_from_sections(content, args.language, args.model_path)
 
     logger.info("Uploading results to S3")
-    upload_results_to_s3(s3_client, args.json_file)
+    upload_results_to_s3(s3_client, args.json_file, args.language)
 
 
 if __name__ == "__main__":
