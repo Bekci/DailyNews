@@ -129,7 +129,8 @@ def replace_input_url_config(bucket_name: str, json_file_key: str, refined_json_
         "original_json_url": generate_s3_download_link(bucket_name, json_file_key),
         "input_json_url": generate_s3_download_link(bucket_name, refined_json_file_key),
         "sample_wav_url": generate_s3_download_link(bucket_name, SAMPLE_WAV_FILE_KEY),
-        "output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "news.wav")),
+        "german_output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "german_news.wav")),
+        "turkish_output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "turkish_news.wav")),
         "output_metadata_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "output_metadata.json")),
     }
     
