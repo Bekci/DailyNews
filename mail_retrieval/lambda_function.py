@@ -36,6 +36,7 @@ from datetime import datetime
 from datetime import datetime
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
+from content_refiner import refine_parsed_content
 from daily_news import process_mail
 from kaggle_exporter import KaggleAPI
 
@@ -196,7 +197,13 @@ def lambda_handler(event, context):
             'body': json.dumps('File already exists, skipping processing')
         }
 
-    parsed_content = process_mail(run_mode, get_secret("mail-key"), get_secret("pinecone-key"), get_secret("google-api"))
+    google_api_key = get_secret("google-api")
+    parsed_content = process_mail(
+        run_mode,
+        get_secret("mail-key"),
+        get_secret("pinecone-key"),
+        google_api_key,
+    )
 
     if parsed_content is None:
         print("Email not found or no content to process, skipping upload")
@@ -205,6 +212,8 @@ def lambda_handler(event, context):
             'body': json.dumps('No content to upload')
         }
 
+    parsed_content = refine_parsed_content(parsed_content, google_api_key)
+    print("Uploading results to the S3 bucket...")
     upload_success =  upload_to_bucket(bucket_name, key_in_bucket, parsed_content)
 
     if upload_success:

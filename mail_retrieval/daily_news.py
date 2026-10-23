@@ -1,12 +1,15 @@
 import json
 
 from datetime import datetime
+import os
 from explorer import Explorer
 from exporter import Exporter
 from langchain_core.documents import Document
+from content_refiner import refine_parsed_content
 from parser import Parser
 from parser import Section
 from parser import News
+from dotenv import load_dotenv
 
 
 def _filter_sections_for_export(sections: list[Section]):
@@ -65,28 +68,6 @@ def _construct_output_file(section_list:list[Section]):
     return sections_str
     
 
-def _construct_output_file(section_list:list[Section]):
-    """
-    Given a Section object, creates a json file to generate as output
-    from the news array of that section
-    """
-    sections_str = []
-    for section in section_list:
-        
-        if len(section.news) == 0:
-            continue
-
-        section_texts = []
-        for news in section.news:
-            section_texts.append(news.get_lines_for_document())
-
-        sections_str.append({
-            "section_title": section.get_title_for_document(),
-            "text": section_texts
-        })
-    return sections_str
-    
-
 def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=None, llm_key:str|None=None):
     date_today  = datetime.today()
     date_as_str = date_today.strftime("%d-%b-%Y")
@@ -116,10 +97,22 @@ def process_mail(run_mode: str, mail_key:str|None=None, pinecone_key:str|None=No
 
     if run_mode == "LOCAL_TEST":
         output_filename = "parsed_news.json"
+        output_filename_refined = "parsed_news_refined.json"
+        
         with open(output_filename, "w+", encoding="utf-8") as jfile:
             json.dump(output_content, jfile, indent=4, ensure_ascii=False)
+
+        parsed_content = refine_parsed_content(sections_for_export, llm_key)    
+        with open(output_filename_refined, "w+", encoding="utf-8") as jfile:
+            json.dump(parsed_content, jfile, indent=4, ensure_ascii=False)
+
 
     return output_content
 
 if __name__ == '__main__':
-    process_mail("LOCAL_TEST")
+    load_dotenv()
+    process_mail(
+        "LOCAL_TEST", 
+        mail_key=os.environ.get("EMAIL_PASSWORD"), 
+        llm_key=os.environ.get("GOOGLE_API_KEY")
+    )

@@ -139,37 +139,6 @@ class Parser:
     def _clean_lines(self, line):
         return line.replace("\xa0", " ").replace("\r", "")
         
-    def parse_sections(self):
-        sections = []
-
-        time_info_lines = [i for i, line in enumerate(self.content_lines) if self._is_section_time_info_line(line)]
-        
-        for i in range(len(time_info_lines)-1):
-            current_time_index = time_info_lines[i]
-            next_time_index = time_info_lines[i+1]
-            
-            current_section_title_index = self._get_preceding_nonempty_string(current_time_index)
-            current_text_start_index = self._get_following_nonempty_string(current_time_index)
-            current_text_end_index = self._get_preceding_nonempty_string(next_time_index)
-
-            sections.append(Section(
-                self.content_lines[current_section_title_index],
-                self.content_lines[current_time_index],
-                self.content_lines[current_text_start_index:current_text_end_index]
-            ))
-
-        # Add the last section
-        last_section_title_index = self._get_preceding_nonempty_string(time_info_lines[-1])
-        last_section_text_start = self._get_following_nonempty_string(time_info_lines[-1])
-
-        sections.append(Section(
-            self.content_lines[last_section_title_index],
-            self.content_lines[time_info_lines[-1]],
-            self.content_lines[last_section_text_start:]
-        ))
-
-        return sections
-        
     
     def _get_preceding_nonempty_string(self, index):
         """
