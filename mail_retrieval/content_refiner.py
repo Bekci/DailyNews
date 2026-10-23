@@ -1,14 +1,10 @@
 import json
-import logging
 from typing import TypedDict
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 
 from parser import Section
-
-logger = logging.getLogger(__name__)
-
 
 class NewsSection(TypedDict):
     section_title: str
@@ -104,7 +100,7 @@ def refine_parsed_content(
     last_error: Exception | None = None
     for model in AVAILABLE_MODELS:
         try:
-            logger.info("Attempting to refine content with: %s...", model)
+            print("Attempting to refine content with: %s...", model)
             llm = ChatGoogleGenerativeAI(
                 model=model,
                 google_api_key=api_key,
@@ -115,7 +111,7 @@ def refine_parsed_content(
             break
         except Exception as error:
             last_error = error
-            logger.warning(
+            print(
                 "Gemini model %s failed (%s); trying the next configured model",
                 model,
                 error,

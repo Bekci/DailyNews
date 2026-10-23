@@ -219,6 +219,7 @@ def lambda_handler(event, context):
             'body': json.dumps('No content to upload')
         }
 
+    print("Refining parsed content...")
     refined_parsed_content = refine_parsed_content(parsed_content, google_api_key)
     print("Uploading results to the S3 bucket...")
     upload_success =  upload_to_bucket(bucket_name, key_in_bucket, parsed_content)
