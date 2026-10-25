@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 load_dotenv()
 
-API_BASE_URL = os.environ.get("API_BASE_URL")
+API_BASE_URL = (os.environ.get("API_BASE_URL") or "").rstrip("/")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
