@@ -79,8 +79,7 @@ def generate_audio_file_from_sections(
     
     write_wav_int16(OUTPUT_WAV_PATH, gen.get_audio_data(), gen.get_sample_rate())
     
-    with open(OUTPUT_METADATA_PATH, "w", encoding="utf-8") as mf:
-        json.dump(gen.get_metadata(), mf, ensure_ascii=False, indent=4)
+    gen.save_metadata(OUTPUT_METADATA_PATH)
     
 
 def write_wav_int16(path: str, samples: np.ndarray, sample_rate: int):
@@ -116,9 +115,9 @@ def upload_results_to_s3(s3_client: S3APIClient, url_config_json: str, language:
         config = json.load(jf)
     
     s3_client.upload_file_with_link(OUTPUT_WAV_PATH, config[f"{language}_output_wav_url"])
-    # Metadata only required for Turkish, as it is the finetuned model
-    if language == "turkish":
-        s3_client.upload_file_with_link(OUTPUT_METADATA_PATH, config[f"output_metadata_url"])
+    s3_client.upload_file_with_link(
+        OUTPUT_METADATA_PATH, config[f"{language}_output_metadata_url"]
+    )
 
 
 def main():

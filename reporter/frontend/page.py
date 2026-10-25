@@ -9,8 +9,11 @@ from client_wrapper import (
     submit_selected_date,
     fetch_messages,
     start_chat,
-    send_chat_message
+    send_chat_message,
+    fetch_playback_options,
+    fetch_playback
 )
+from audio_player import render_audio_player
 from datetime import datetime
 
 MAX_ATTEMPTS = 5
@@ -48,6 +51,15 @@ def init_state():
 
     if "chat" not in st.session_state:
         reset_chat()
+
+    if "audio" not in st.session_state:
+        st.session_state.audio = {
+            "language": None,
+            "available_dates": [],
+            "options_error": False,
+            "playback_key": None,
+            "playback": None,
+        }
 
 def reset_chat():
     st.session_state.chat = {
@@ -321,6 +333,64 @@ def render_chat():
         chat["messages"].append(assistant_message)
         st.rerun()
 
+
+def render_audio_view():
+    st.title("🎧 Haberleri dinle")
+
+    languages = {"Deutsch": "german", "Türkçe": "turkish"}
+    language_label = st.selectbox("Dil", list(languages))
+    language = languages[language_label]
+    audio_state = st.session_state.audio
+
+    if audio_state["language"] != language:
+        available_dates = fetch_playback_options(language)
+        audio_state.update({
+            "language": language,
+            "available_dates": available_dates or [],
+            "options_error": available_dates is None,
+            "playback_key": None,
+            "playback": None,
+        })
+
+    dates = audio_state["available_dates"]
+    if not dates:
+        if audio_state["options_error"]:
+            st.error("Dinleme seçenekleri yüklenemedi. Lütfen bağlantınızı kontrol edip tekrar deneyin.")
+            return
+        st.info(f"{language_label} için dinlenebilir haber bulunamadı.")
+        return
+
+    selected_date = st.selectbox(
+        "Haber tarihi",
+        options=dates,
+        format_func=lambda date: date.strftime(DATE_VISUAL_FORMAT),
+        key=f"audio_date_{language}",
+    )
+    playback_key = (language, selected_date.strftime("%Y-%m-%d"))
+
+    if st.button("Oynatıcıyı aç", type="primary", use_container_width=True):
+        with st.spinner("Ses ve metin yükleniyor..."):
+            playback = fetch_playback(selected_date, language)
+        if playback:
+            audio_state["playback_key"] = playback_key
+            audio_state["playback"] = playback
+        else:
+            audio_state["playback_key"] = None
+            audio_state["playback"] = None
+            st.error("Oynatıcı yüklenemedi. Lütfen daha sonra tekrar deneyin.")
+
+    if (
+        audio_state["playback"]
+        and audio_state["playback_key"] == playback_key
+    ):
+        render_audio_player(
+            audio_url=audio_state["playback"]["audio_url"],
+            segments=audio_state["playback"]["segments"],
+            language=language,
+            selected_date=playback_key[1],
+        )
+
+
 def main():
     st.set_page_config(page_title="Ulak", layout="wide")
 
@@ -347,10 +417,17 @@ def main():
             show_login_dialog()
 
         with st.sidebar:
+            selected_view = st.radio(
+                "Uygulama",
+                options=["Ulak'a sor", "Haberleri dinle"],
+                label_visibility="collapsed",
+            )
             render_menu()
     
-        render_chat()
+        if selected_view == "Haberleri dinle":
+            render_audio_view()
+        else:
+            render_chat()
 
 if __name__ == "__main__":
     main()
-

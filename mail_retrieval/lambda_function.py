@@ -131,7 +131,8 @@ def replace_input_url_config(bucket_name: str, json_file_key: str, refined_json_
         "sample_wav_url": generate_s3_download_link(bucket_name, SAMPLE_WAV_FILE_KEY),
         "german_output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "german_news.wav")),
         "turkish_output_wav_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "turkish_news.wav")),
-        "output_metadata_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "output_metadata.json")),
+        "german_output_metadata_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "german_output_metadata.json")),
+        "turkish_output_metadata_url": generate_s3_upload_link(bucket_name, json_file_key.replace(fname, "turkish_output_metadata.json")),
     }
     
     for root, _, files in os.walk(TMP_DATASET_PATH):
