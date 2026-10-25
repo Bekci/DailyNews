@@ -193,41 +193,18 @@ def chat(request: ChatRequest):
     )
 
 
-@app.get("/download-options", response_model=list[str])
-def get_download_options():
-    """
-    Returns a list of available dates for which audio files can be downloaded.
-    """
-    logger.info("/download-options called!")
-    date_today = datetime.today()
-    conn = boto3.client('s3')
-    existing_file_keys = [key['Key'] for key in conn.list_objects(Bucket=os.environ["BUCKET_NAME"], Prefix=f'outputs/{date_today.year}/')['Contents'] if 'news.wav' in key['Key']]
-    existing_dates = []
-    for file_key in existing_file_keys:
-        parts = file_key.split('/')
-        if len(parts) >= 5:
-            year, month, day = parts[1], parts[2], parts[3]
-            existing_dates.append(f"{year}-{month.zfill(2)}-{day.zfill(2)}")
-    existing_dates.sort()
-    return existing_dates
-
-
-@app.get("/playback-options", response_model=list[str])
-def get_playback_options(language: Literal["german", "turkish"] = Query(...)):
-    """Return dates with generated audio available for the selected language."""
-    date_today = datetime.today()
+def _get_audio_dates(audio_names: tuple[str, ...]) -> list[str]:
     s3 = boto3.client("s3")
     paginator = s3.get_paginator("list_objects_v2")
-    audio_name = f"{language}_news.wav"
     available_dates = set()
 
     for page in paginator.paginate(
         Bucket=os.environ["BUCKET_NAME"],
-        Prefix=f"outputs/{date_today.year}/",
+        Prefix="outputs/",
     ):
         for item in page.get("Contents", []):
             key = item["Key"]
-            if not key.endswith(f"/{audio_name}"):
+            if not any(key.endswith(f"/{audio_name}") for audio_name in audio_names):
                 continue
 
             parts = key.split("/")
@@ -243,6 +220,19 @@ def get_playback_options(language: Literal["german", "turkish"] = Query(...)):
             available_dates.add(available_date.strftime("%Y-%m-%d"))
 
     return sorted(available_dates)
+
+
+@app.get("/download-options", response_model=list[str])
+def get_download_options():
+    """Return dates with generated language-specific audio available."""
+    logger.info("/download-options called!")
+    return _get_audio_dates(("german_news.wav", "turkish_news.wav"))
+
+
+@app.get("/playback-options", response_model=list[str])
+def get_playback_options(language: Literal["german", "turkish"] = Query(...)):
+    """Return dates with generated audio available for the selected language."""
+    return _get_audio_dates((f"{language}_news.wav",))
 
 
 @app.get("/playback/{date_str}/{language}", response_model=PlaybackResponse)
