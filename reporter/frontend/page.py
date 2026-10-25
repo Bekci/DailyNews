@@ -412,16 +412,18 @@ def main():
         show_login_dialog()
 
     else:
+        selected_view = st.radio(
+            "Uygulama",
+            options=["Ulak'a sor", "Haberleri dinle"],
+            horizontal=True,
+            key="selected_view",
+        )
+
         # Always show the login dialog if it should be open
         if st.session_state.ui.get("login_dialog_open"):
             show_login_dialog()
 
         with st.sidebar:
-            selected_view = st.radio(
-                "Uygulama",
-                options=["Ulak'a sor", "Haberleri dinle"],
-                label_visibility="collapsed",
-            )
             render_menu()
     
         if selected_view == "Haberleri dinle":
