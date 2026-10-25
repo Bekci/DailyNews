@@ -1,3 +1,4 @@
+import json
 import os
 import random
 from abc import ABC, abstractmethod
@@ -62,6 +63,10 @@ class Generator(ABC):
 
     def get_metadata(self) -> list[dict[str, str | int]]:
         return self._metadata
+
+    def save_metadata(self, path: str) -> None:
+        with open(path, "w", encoding="utf-8") as metadata_file:
+            json.dump(self._metadata, metadata_file, ensure_ascii=False, indent=4)
 
     def get_sample_rate(self) -> int:
         return self._sample_rate
