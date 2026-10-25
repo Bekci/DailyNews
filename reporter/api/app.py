@@ -1,23 +1,25 @@
-import os
 import boto3
 import db
-import uuid
-import logging
 import hmac
+import json
+import logging
+import os
 import secrets
+import uuid
+from datetime import datetime
+from typing import Literal
 
 from agent import Ulak
-from datetime import datetime
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from mangum import Mangum
-from fastapi import HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from botocore.exceptions import ClientError
 from secret_manager import get_key_from_ssm
 
 load_dotenv()
 DOWNLOAD_EXPIRES_IN = 60 * 3  # 3 minutes
+PLAYBACK_EXPIRES_IN = 60 * 60
 TOKEN_INVALIDATION_TIME = 60 * 60 # 1 hour
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -75,6 +77,15 @@ class DownloadLinkRequest(BaseModel):
 class DownloadLinkResponse(BaseModel):
     download_url: str | None
     message: str
+
+class PlaybackSegment(BaseModel):
+    text: str
+    start_ms: int
+    end_ms: int
+
+class PlaybackResponse(BaseModel):
+    audio_url: str
+    segments: list[PlaybackSegment]
 
 class LoginRequest(BaseModel):
     password: str
@@ -199,6 +210,91 @@ def get_download_options():
             existing_dates.append(f"{year}-{month.zfill(2)}-{day.zfill(2)}")
     existing_dates.sort()
     return existing_dates
+
+
+@app.get("/playback-options", response_model=list[str])
+def get_playback_options(language: Literal["german", "turkish"] = Query(...)):
+    """Return dates with generated audio available for the selected language."""
+    date_today = datetime.today()
+    s3 = boto3.client("s3")
+    paginator = s3.get_paginator("list_objects_v2")
+    audio_name = f"{language}_news.wav"
+    available_dates = set()
+
+    for page in paginator.paginate(
+        Bucket=os.environ["BUCKET_NAME"],
+        Prefix=f"outputs/{date_today.year}/",
+    ):
+        for item in page.get("Contents", []):
+            key = item["Key"]
+            if not key.endswith(f"/{audio_name}"):
+                continue
+
+            parts = key.split("/")
+            if len(parts) < 5:
+                continue
+
+            year, month, day = parts[1:4]
+            try:
+                available_date = datetime(int(year), int(month), int(day))
+            except ValueError:
+                logger.warning("Ignoring audio object with invalid date path: %s", key)
+                continue
+            available_dates.add(available_date.strftime("%Y-%m-%d"))
+
+    return sorted(available_dates)
+
+
+@app.get("/playback/{date_str}/{language}", response_model=PlaybackResponse)
+def get_playback(date_str: str, language: Literal["german", "turkish"]):
+    """Return a signed audio URL and its timed transcript for a generated date."""
+    try:
+        date_requested = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    date_prefix = (
+        f"outputs/{date_requested.year}/{date_requested.month}/{date_requested.day}"
+    )
+    audio_key = f"{date_prefix}/{language}_news.wav"
+    metadata_key = f"{date_prefix}/{language}_output_metadata.json"
+    s3 = boto3.client("s3")
+
+    try:
+        s3.head_object(Bucket=os.environ["BUCKET_NAME"], Key=audio_key)
+        metadata_response = s3.get_object(
+            Bucket=os.environ["BUCKET_NAME"],
+            Key=metadata_key,
+        )
+        metadata_bytes = metadata_response["Body"].read()
+    except ClientError as error:
+        error_code = error.response.get("Error", {}).get("Code")
+        if error_code in {"404", "NoSuchKey", "NotFound"}:
+            raise HTTPException(status_code=404, detail="Audio or transcript not found.")
+        if error_code in {"403", "AccessDenied"}:
+            raise HTTPException(status_code=403, detail="Access denied to audio or transcript.")
+        logger.exception("Failed to load playback assets for %s", date_str)
+        raise HTTPException(status_code=500, detail="Failed to load playback assets.")
+
+    try:
+        metadata = json.loads(metadata_bytes.decode("utf-8"))
+        playback = PlaybackResponse(
+            audio_url=s3.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": os.environ["BUCKET_NAME"],
+                    "Key": audio_key,
+                    "ResponseContentType": "audio/wav",
+                },
+                ExpiresIn=PLAYBACK_EXPIRES_IN,
+            ),
+            segments=metadata,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValidationError):
+        logger.exception("Invalid playback metadata in S3 object %s", metadata_key)
+        raise HTTPException(status_code=500, detail="Playback transcript is invalid.")
+
+    return playback
 
 
 @app.post("/download", response_model=DownloadLinkResponse)

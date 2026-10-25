@@ -4,6 +4,8 @@ import streamlit as st
 
 from client import (
     fetch_available_dates_async,
+    fetch_playback_options_async,
+    fetch_playback_async,
     fetch_conversations_async,
     submit_selected_date_async,
     fetch_messages_async,
@@ -41,6 +43,32 @@ def fetch_available_dates():
     except Exception as e:
         logger.error(f"Error fetching available dates: {e}")
         return []
+
+
+def fetch_playback_options(language: str):
+    """Fetch available listening dates for a language."""
+    try:
+        token = get_token()
+        return asyncio.run(fetch_playback_options_async(language, token=token))
+    except UnauthorizedException:
+        clear_authentication()
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching playback options: {e}")
+        return None
+
+
+def fetch_playback(selected_date, language: str):
+    """Fetch audio and transcript playback data."""
+    try:
+        token = get_token()
+        return asyncio.run(fetch_playback_async(selected_date, language, token=token))
+    except UnauthorizedException:
+        clear_authentication()
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching playback: {e}")
+        return None
 
 
 @st.cache_data(ttl=3600)

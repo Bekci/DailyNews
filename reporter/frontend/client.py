@@ -46,6 +46,48 @@ async def fetch_available_dates_async(token: Optional[str] = None):
         return []
 
 
+async def fetch_playback_options_async(language: str, token: Optional[str] = None):
+    """Fetch dates with audio available for the selected language."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{API_BASE_URL}/playback-options",
+                params={"language": language},
+                headers=get_auth_headers(token)
+            ) as response:
+                if response.status == 401:
+                    raise UnauthorizedException("Invalid or expired token")
+                response.raise_for_status()
+                dates = await response.json()
+                return sorted(
+                    datetime.strptime(date, "%Y-%m-%d") for date in dates
+                )
+    except UnauthorizedException:
+        raise
+    except aiohttp.ClientError as e:
+        logger.error(f"Failed to fetch playback options: {e}")
+        raise
+
+
+async def fetch_playback_async(selected_date, language: str, token: Optional[str] = None):
+    """Fetch a signed audio URL and the synchronized transcript."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{API_BASE_URL}/playback/{selected_date.strftime('%Y-%m-%d')}/{language}",
+                headers=get_auth_headers(token)
+            ) as response:
+                if response.status == 401:
+                    raise UnauthorizedException("Invalid or expired token")
+                response.raise_for_status()
+                return await response.json()
+    except UnauthorizedException:
+        raise
+    except aiohttp.ClientError as e:
+        logger.error(f"Failed to fetch playback: {e}")
+        return None
+
+
 async def fetch_conversations_async(token: Optional[str] = None):
     """Fetch conversations from the API asynchronously"""
     try:
