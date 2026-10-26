@@ -79,6 +79,12 @@ async def fetch_playback_async(selected_date, language: str, token: Optional[str
             ) as response:
                 if response.status == 401:
                     raise UnauthorizedException("Invalid or expired token")
+                if response.status >= 400:
+                    logger.error(
+                        "Playback API returned %s: %s",
+                        response.status,
+                        await response.text(),
+                    )
                 response.raise_for_status()
                 return await response.json()
     except UnauthorizedException:
