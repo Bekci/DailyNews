@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 load_dotenv()
 
-API_BASE_URL = os.environ.get("API_BASE_URL")
+API_BASE_URL = (os.environ.get("API_BASE_URL") or "").rstrip("/")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,12 @@ async def fetch_playback_async(selected_date, language: str, token: Optional[str
             ) as response:
                 if response.status == 401:
                     raise UnauthorizedException("Invalid or expired token")
+                if response.status >= 400:
+                    logger.error(
+                        "Playback API returned %s: %s",
+                        response.status,
+                        await response.text(),
+                    )
                 response.raise_for_status()
                 return await response.json()
     except UnauthorizedException:
